@@ -9,7 +9,7 @@
 - **Multi-portfolio & Access Sharing:** Create multiple portfolios, share view or edit permissions with other local users.
 - **Pure CGT Replay Engine:** Deterministic, pure-function CGT calculation supporting FIFO, LIFO, and Min-CGT (tax minimisation). Applies the 50% 12-month discount rule and handles AMIT cost-base adjustments including E4 capital gain events.
 - **Sharesight Simple Method Return:** Accurately computes capital gains, dividend income, time-weighted average capital invested, simple return percentage, and compound annualised percentage p.a.
-- **Sharesight CSV Importer:** Preview, commit, and undo trade exports from Sharesight with instant validation.
+- **CSV Trade Importer:** Preview, commit, and undo a CSV of trade history with instant validation — download a ready-to-fill template, or import exports from Sharesight and other brokers/trackers directly.
 - **Distributions & DRP:** Track franking credits, AMIT adjustments, and automatically link Dividend Reinvestment Plan (DRP) purchases.
 - **Attachments:** Store trade confirmation PDFs and dividend statements locally with role-based access control.
 - **Zero Cloud Dependency:** Price data is cached locally via Yahoo Finance integration (`yfinance==0.2.54` pinned for stability).

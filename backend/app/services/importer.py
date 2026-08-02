@@ -1,13 +1,26 @@
 import csv
 import io
+import re
 import datetime
 from decimal import Decimal, InvalidOperation
 from typing import List, Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
 
 from app.models.models import ImportBatch, Trade, Holding, Instrument
-from app.services.pricing import ensure_instrument, backfill_prices
+from app.services.pricing import ensure_instrument
 from app.services.cgt import validate_holding_stream, OversellError
+
+_DECIMAL_JUNK_RE = re.compile(r"[^0-9.\-]")
+
+
+def parse_decimal(value: str) -> Decimal:
+    """Parse a numeric CSV cell, tolerating spreadsheet currency formatting
+    (e.g. "$141.20 ", "1,234.56") that Decimal() alone rejects."""
+    cleaned = _DECIMAL_JUNK_RE.sub("", value.strip())
+    if not cleaned or cleaned == "-":
+        raise InvalidOperation(f"'{value}' is not a number")
+    return Decimal(cleaned)
+
 
 def parse_date(date_str: str) -> datetime.date:
     date_str = date_str.strip()
@@ -20,16 +33,34 @@ def parse_date(date_str: str) -> datetime.date:
     raise ValueError(f"Invalid date format: {date_str}")
 
 
-def find_column(header: List[str], keywords: List[str]) -> Optional[int]:
+def find_column(header: List[str], keywords: List[str], exclude: Optional[List[str]] = None) -> Optional[int]:
     header_lower = [h.strip().lower() for h in header]
     for kw in keywords:
         for idx, h in enumerate(header_lower):
-            if kw in h:
+            if kw in h and not (exclude and any(ex in h for ex in exclude)):
                 return idx
     return None
 
 
-def parse_sharesight_csv(csv_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+TEMPLATE_HEADERS = ["Symbol", "Date", "Type", "Quantity", "Price", "Brokerage", "Broker", "Notes"]
+TEMPLATE_EXAMPLE_ROWS = [
+    ["VAS", "15/01/2025", "BUY", "50", "90.00", "9.95", "Stake", "Example row - replace with your own data"],
+    ["VAS", "20/02/2025", "SELL", "10", "95.00", "9.95", "Stake", "Example row - replace with your own data"],
+]
+
+
+def build_import_template_csv() -> bytes:
+    """Generic trade import template. Column names match the keywords parse_trades_csv
+    looks for, so this file (and most broker/tracking-tool exports using similar
+    headers, e.g. Sharesight's "All trades" export) both import cleanly."""
+    stream = io.StringIO()
+    writer = csv.writer(stream)
+    writer.writerow(TEMPLATE_HEADERS)
+    writer.writerows(TEMPLATE_EXAMPLE_ROWS)
+    return stream.getvalue().encode("utf-8")
+
+
+def parse_trades_csv(csv_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     content = csv_bytes.decode("utf-8-sig", errors="replace")
     stream = io.StringIO(content)
     reader = csv.reader(stream)
@@ -44,16 +75,19 @@ def parse_sharesight_csv(csv_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[D
     col_type = find_column(header, ["type", "transaction type"])
     col_qty = find_column(header, ["quantity", "qty", "units"])
     col_price = find_column(header, ["price", "unit price"])
+    col_broker = find_column(header, ["broker"], exclude=["brokerage"])
     col_brokerage = find_column(header, ["brokerage", "fee", "fees"])
     col_comments = find_column(header, ["comments", "notes"])
 
     if col_code is None or col_date is None or col_type is None or col_qty is None or col_price is None:
-        return [], [{"row": 1, "error": "Missing required column headers (Code, Date, Type, Quantity, Price)"}]
+        return [], [{"row": 0, "error": "Missing required column headers (Code, Date, Type, Quantity, Price)"}]
 
     valid_rows = []
     error_rows = []
 
-    for row_idx, row in enumerate(reader, start=2):
+    # 1-indexed against data rows only (header excluded), so "row" matches
+    # the position a user would count in their spreadsheet after the header.
+    for row_idx, row in enumerate(reader, start=1):
         if not row or not any(row):
             continue
 
@@ -81,20 +115,22 @@ def parse_sharesight_csv(csv_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[D
                 continue
 
             qty_str = row[col_qty].strip() if col_qty < len(row) else ""
-            qty = Decimal(qty_str)
+            qty = parse_decimal(qty_str)
             if qty <= Decimal("0"):
                 error_rows.append({"row": row_idx, "error": f"Quantity must be positive (got {qty_str})"})
                 continue
 
             price_str = row[col_price].strip() if col_price < len(row) else ""
-            price = Decimal(price_str)
+            price = parse_decimal(price_str)
             if price < Decimal("0"):
                 error_rows.append({"row": row_idx, "error": f"Price cannot be negative (got {price_str})"})
                 continue
 
             brokerage_str = "0"
             if col_brokerage is not None and col_brokerage < len(row) and row[col_brokerage].strip():
-                brokerage_str = str(Decimal(row[col_brokerage].strip()))
+                brokerage_str = str(parse_decimal(row[col_brokerage].strip()))
+
+            broker = row[col_broker].strip() if (col_broker is not None and col_broker < len(row)) else ""
 
             comments = row[col_comments].strip() if (col_comments is not None and col_comments < len(row)) else ""
 
@@ -105,6 +141,7 @@ def parse_sharesight_csv(csv_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[D
                 "trade_date": trade_date,
                 "quantity": f"{qty:.4f}",
                 "unit_price": f"{price:.4f}",
+                "broker": broker,
                 "brokerage": brokerage_str,
                 "notes": comments,
                 "sell_allocation_method": "min_cgt" if ttype == "SELL" else None
@@ -116,7 +153,7 @@ def parse_sharesight_csv(csv_bytes: bytes) -> Tuple[List[Dict[str, Any]], List[D
 
 
 def preview_import(csv_bytes: bytes) -> Dict[str, Any]:
-    valid, errors = parse_sharesight_csv(csv_bytes)
+    valid, errors = parse_trades_csv(csv_bytes)
     return {
         "valid_count": len(valid),
         "error_count": len(errors),
@@ -125,8 +162,10 @@ def preview_import(csv_bytes: bytes) -> Dict[str, Any]:
     }
 
 
-def commit_import(db: Session, portfolio_id: int, filename: str, csv_bytes: bytes) -> Tuple[ImportBatch, List[int]]:
-    valid_rows, error_rows = parse_sharesight_csv(csv_bytes)
+def commit_import(
+    db: Session, portfolio_id: int, filename: str, csv_bytes: bytes
+) -> Tuple[ImportBatch, List[int], List[Tuple[str, datetime.date]]]:
+    valid_rows, error_rows = parse_trades_csv(csv_bytes)
     if error_rows and not valid_rows:
         raise ValueError(f"Import failed: all rows had errors ({error_rows[0]['error']})")
 
@@ -164,6 +203,7 @@ def commit_import(db: Session, portfolio_id: int, filename: str, csv_bytes: byte
             trade_date=r["trade_date"],
             quantity=r["quantity"],
             unit_price=r["unit_price"],
+            broker=r["broker"],
             brokerage=r["brokerage"],
             notes=r["notes"],
             sell_allocation_method=r["sell_allocation_method"],
@@ -184,12 +224,21 @@ def commit_import(db: Session, portfolio_id: int, filename: str, csv_bytes: byte
     db.commit()
     db.refresh(batch)
 
-    # Trigger price backfills post-commit
-    for inst in instruments_to_backfill:
-        earliest = min((r["trade_date"] for r in valid_rows if r["symbol"] == inst.symbol), default=datetime.date.today())
-        backfill_prices(db, inst, earliest)
+    # Price backfill hits Yahoo Finance once per new instrument with its own
+    # retry/backoff loop — synchronously blocking here made large imports
+    # (or a rate-limited/slow Yahoo Finance) hang the commit request for
+    # minutes. Trades are already durably committed above, so return plain
+    # (symbol, earliest_date) pairs and let the caller run backfill_prices()
+    # out-of-band (e.g. via FastAPI BackgroundTasks) instead of blocking here.
+    backfill_targets = [
+        (
+            inst.symbol,
+            min((r["trade_date"] for r in valid_rows if r["symbol"] == inst.symbol), default=datetime.date.today())
+        )
+        for inst in instruments_to_backfill
+    ]
 
-    return batch, list(affected_holdings)
+    return batch, list(affected_holdings), backfill_targets
 
 
 def undo_import(db: Session, batch_id: int) -> None:

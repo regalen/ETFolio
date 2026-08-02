@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
@@ -12,9 +12,12 @@ import { IconButton } from '@astryxdesign/core/IconButton'
 import { Icon } from '@astryxdesign/core/Icon'
 import { Banner } from '@astryxdesign/core/Banner'
 import { Badge } from '@astryxdesign/core/Badge'
-import { Table, proportional } from '@astryxdesign/core/Table'
+import { Link } from '@astryxdesign/core/Link'
+import { Toolbar } from '@astryxdesign/core/Toolbar'
+import { Table, proportional, pixel } from '@astryxdesign/core/Table'
 import type { TableColumn } from '@astryxdesign/core/Table'
-import { ArrowLeft, Undo2 } from 'lucide-react'
+import { PlainAnchor } from '../lib/routerLink'
+import { ArrowLeft, Undo2, Download } from 'lucide-react'
 
 interface PreviewRow extends Record<string, unknown> {
   row: number
@@ -23,7 +26,16 @@ interface PreviewRow extends Record<string, unknown> {
   type: 'BUY' | 'SELL'
   quantity: string
   unit_price: string
+  broker: string
   brokerage: string
+  notes: string
+}
+
+interface SymbolSummary extends Record<string, unknown> {
+  symbol: string
+  buyQty: number
+  sellQty: number
+  netQty: number
 }
 
 export const Importer: React.FC = () => {
@@ -98,17 +110,44 @@ export const Importer: React.FC = () => {
   }
 
   const previewColumns: TableColumn<PreviewRow>[] = [
-    { key: 'row', header: 'Row', width: proportional(0.5), renderCell: r => <Text color="secondary">{r.row}</Text> },
+    { key: 'row', header: 'Row', width: pixel(56), renderCell: r => <Text color="secondary">{r.row}</Text> },
     { key: 'symbol', header: 'Symbol', width: proportional(1), renderCell: r => <Text weight="bold">{r.symbol}</Text> },
     { key: 'trade_date', header: 'Date', width: proportional(1), renderCell: r => <Text>{formatDate(r.trade_date)}</Text> },
-    { key: 'type', header: 'Type', width: proportional(1), renderCell: r => <Badge label={r.type} variant={r.type === 'BUY' ? 'green' : 'red'} /> },
+    // Fixed px: a BUY/SELL badge doesn't need a full proportional share, and
+    // giving it one left a wide gap between the (left-aligned) badge and the
+    // (right-aligned) Qty column next to it.
+    { key: 'type', header: 'Type', width: pixel(110), renderCell: r => <Badge label={r.type} variant={r.type === 'BUY' ? 'green' : 'red'} /> },
     { key: 'quantity', header: 'Qty', width: proportional(1), align: 'end', renderCell: r => <Text hasTabularNumbers>{parseFloat(r.quantity).toFixed(2)}</Text> },
     { key: 'unit_price', header: 'Price', width: proportional(1), align: 'end', renderCell: r => <Text hasTabularNumbers>{formatCurrency(r.unit_price)}</Text> },
-    { key: 'brokerage', header: 'Brokerage', width: proportional(1), align: 'end', renderCell: r => <Text color="secondary" hasTabularNumbers>{formatCurrency(r.brokerage)}</Text> }
+    { key: 'brokerage', header: 'Brokerage', width: proportional(1), align: 'end', renderCell: r => <Text color="secondary" hasTabularNumbers>{formatCurrency(r.brokerage)}</Text> },
+    { key: 'broker', header: 'Broker', width: proportional(1), renderCell: r => <Text color="secondary">{r.broker || '-'}</Text> },
+    { key: 'notes', header: 'Notes', width: proportional(1.5), renderCell: r => <Text color="secondary" maxLines={1}>{r.notes || '-'}</Text> }
   ]
 
+  const summaryColumns: TableColumn<SymbolSummary>[] = [
+    { key: 'symbol', header: 'Symbol', width: proportional(1), renderCell: s => <Text weight="bold">{s.symbol}</Text> },
+    { key: 'buyQty', header: 'Buy Qty', width: proportional(1), align: 'end', renderCell: s => <Text hasTabularNumbers>{s.buyQty.toFixed(2)}</Text> },
+    { key: 'sellQty', header: 'Sell Qty', width: proportional(1), align: 'end', renderCell: s => <Text hasTabularNumbers>{s.sellQty.toFixed(2)}</Text> },
+    { key: 'netQty', header: 'Net Qty', width: proportional(1), align: 'end', renderCell: s => <Text weight="bold" hasTabularNumbers>{s.netQty.toFixed(2)}</Text> }
+  ]
+
+  const symbolSummary: SymbolSummary[] = useMemo(() => {
+    const rows: PreviewRow[] = previewData?.valid_rows ?? []
+    const bySymbol = new Map<string, { buyQty: number; sellQty: number }>()
+    for (const r of rows) {
+      const entry = bySymbol.get(r.symbol) ?? { buyQty: 0, sellQty: 0 }
+      const qty = parseFloat(r.quantity)
+      if (r.type === 'BUY') entry.buyQty += qty
+      else entry.sellQty += qty
+      bySymbol.set(r.symbol, entry)
+    }
+    return Array.from(bySymbol.entries())
+      .map(([symbol, { buyQty, sellQty }]) => ({ symbol, buyQty, sellQty, netQty: buyQty - sellQty }))
+      .sort((a, b) => a.symbol.localeCompare(b.symbol))
+  }, [previewData])
+
   return (
-    <VStack gap={6} style={{ maxWidth: 896, margin: '0 auto' }}>
+    <VStack gap={6}>
       <HStack gap={3} vAlign="center">
         <IconButton
           label="Back to dashboard"
@@ -117,8 +156,8 @@ export const Importer: React.FC = () => {
           onClick={() => navigate(`/portfolios/${portfolioId}`)}
         />
         <VStack gap={0}>
-          <Heading level={1}>Import Sharesight Trades CSV</Heading>
-          <Text type="supporting">Upload your Sharesight "All trades" export file to populate trades</Text>
+          <Heading level={1}>Import Trades CSV</Heading>
+          <Text type="supporting">Upload a CSV of your trade history to populate trades</Text>
         </VStack>
       </HStack>
 
@@ -146,15 +185,23 @@ export const Importer: React.FC = () => {
       )}
 
       {!committedBatch && (
-        <Card padding={8}>
+        <Card padding={8} style={{ maxWidth: 640, margin: '0 auto' }}>
           <VStack gap={4} hAlign="center">
             <VStack gap={1} hAlign="center">
-              <Heading level={3}>Select Sharesight CSV File</Heading>
-              <Text type="supporting">Supports Sharesight "All trades" export CSVs</Text>
+              <Heading level={3}>Select CSV File</Heading>
+              <Text type="supporting">
+                Columns needed: Symbol, Date, Type, Quantity, Price (Brokerage, Broker, and Notes optional)
+              </Text>
+              <Link as={PlainAnchor} href="/api/import/template" download>
+                <HStack gap={1.5} vAlign="center">
+                  <Icon icon={Download} size="sm" />
+                  <Text weight="semibold">Download CSV template</Text>
+                </HStack>
+              </Link>
             </VStack>
 
             <FileInput
-              label="Sharesight CSV file"
+              label="Trade CSV file"
               isLabelHidden
               mode="dropzone"
               accept=".csv"
@@ -179,6 +226,15 @@ export const Importer: React.FC = () => {
               onClick={() => selectedFile && commitMutation.mutate(selectedFile)}
             />
           </HStack>
+
+          {symbolSummary.length > 0 && (
+            <Card padding={0}>
+              <VStack gap={0}>
+                <Toolbar label="Summary by symbol" startContent={<Heading level={3}>Summary by Symbol</Heading>} />
+                <Table<SymbolSummary> data={symbolSummary} columns={summaryColumns} idKey="symbol" dividers="rows" />
+              </VStack>
+            </Card>
+          )}
 
           {previewData.error_rows?.length > 0 && (
             <Banner status="warning" title={`Skipped / Invalid Rows (${previewData.error_rows.length})`} container="card" defaultIsExpanded>

@@ -45,7 +45,7 @@ frontend/
 - **CGT is a pure-function replay engine** (`app/services/cgt.py`): given the full trade/distribution history, it deterministically recomputes parcels and realised gains from scratch. Supports FIFO, LIFO, and Min-CGT (tax-minimisation) allocation methods, the 50% 12-month discount rule, and AMIT cost-base adjustments (including E4 capital gain events). When editing trades/distributions, the engine re-runs (validate-replay-on-edit) rather than patching state incrementally — don't try to special-case incremental updates.
 - **Returns use the Sharesight Simple Method** (see README.md for the exact formulas: capital gain, income, total return, simple return %, annualised % p.a.). Match these formulas exactly if touching `valuation.py`.
 - Permissions are portfolio-scoped: `owner` / `edit` / `view`, enforced per-request — check `tests/api/test_permission_matrix.py` for the expected matrix before changing access logic.
-- Imports (Sharesight CSV) are preview → commit → undo, never a direct one-shot import — preserve that three-step flow if touching `importer.py`.
+- Imports (CSV trade history) are preview → commit → undo, never a direct one-shot import — preserve that three-step flow if touching `importer.py`. Column detection is header-keyword based (`find_column`), not tied to any one broker's export format — a downloadable template (`build_import_template_csv`) documents the canonical column names, but Sharesight-style exports and similar still parse via the same keyword matching.
 
 ## Frontend conventions
 
@@ -59,7 +59,8 @@ frontend/
 
 - `HoldingDetail.tsx` still uses native `confirm()`/`alert()` for the two cascade-delete conflict flows (trade/distribution deletion when a linked record exists). These need a proper `AlertDialog` + pending-action state to match the rest of the app's Astryx styling.
 - In `deleteTradeMutation`'s error handler (`HoldingDetail.tsx`), the retry call passes `err.message` (a string) as the trade ID on cascade retry — pre-existing bug, not yet fixed.
-- Page content width is inconsistent: some pages (TradeEntry, Importer, Settings) cap their own max-width inline; others (Dashboard, Reports, HoldingDetail) run full-bleed under `AppShell`. Needs a deliberate decision, not more inline caps.
+- Page content width is inconsistent: some pages (TradeEntry, Settings) cap their own max-width inline; others (Dashboard, Reports, HoldingDetail, Importer) run full-bleed under `AppShell`, capping only individual form-like cards (see `Importer.tsx`'s upload `Card`) rather than the whole page. Needs a deliberate decision for the remaining pages, not more inline caps.
+- Any `Table` column using a fractional `proportional()` width (e.g. `proportional(0.5)`) blows up the table's derived min-width (`max(minWidth * totalProportion / proportion)` across columns) and forces horizontal overflow — use `pixel()` for narrow fixed-width columns (row numbers, chevrons) instead, per `HoldingsTable.tsx` and `Importer.tsx`.
 
 ## Commands
 
