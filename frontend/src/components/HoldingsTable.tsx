@@ -1,9 +1,18 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { formatCurrency, formatPercent } from '../lib/format'
-import { ArrowUpDown, ChevronRight, Tag } from 'lucide-react'
+import { Card } from '@astryxdesign/core/Card'
+import { VStack, HStack } from '@astryxdesign/core/Layout'
+import { Heading, Text } from '@astryxdesign/core/Text'
+import { Table, proportional, useTableSortable } from '@astryxdesign/core/Table'
+import type { TableColumn, TableSortState } from '@astryxdesign/core/Table'
+import { Toolbar } from '@astryxdesign/core/Toolbar'
+import { Button } from '@astryxdesign/core/Button'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Link } from '@astryxdesign/core/Link'
+import { Icon } from '@astryxdesign/core/Icon'
+import { Tag, ChevronRight } from 'lucide-react'
+import { formatCurrency } from '../lib/format'
 
-export interface HoldingItem {
+export interface HoldingItem extends Record<string, unknown> {
   id: number
   portfolio_id: number
   instrument_id: number
@@ -33,7 +42,11 @@ interface HoldingsTableProps {
   tags?: { id: number; name: string }[]
 }
 
-type SortField = 'symbol' | 'last_price' | 'quantity' | 'market_value' | 'capital_gain' | 'income' | 'total_return'
+type SortKey = 'symbol' | 'last_price' | 'quantity' | 'market_value' | 'capital_gain' | 'income' | 'total_return'
+
+function ColoredValue({ value, isPositive }: { value: string; isPositive: boolean }) {
+  return <Badge label={value} variant={isPositive ? 'green' : 'red'} />
+}
 
 export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   portfolioId,
@@ -41,29 +54,30 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   searchQuery = '',
   tags = []
 }) => {
-  const [sortField, setSortField] = useState<SortField>('market_value')
-  const [sortAsc, setSortAsc] = useState(false)
+  const [sort, setSort] = useState<TableSortState<SortKey>>([{ sortKey: 'market_value', direction: 'descending' }])
   const [groupByTag, setGroupByTag] = useState(false)
 
-  const tagMap = new Map(tags.map(t => [t.id, t.name]))
-
-  // Filter
   const filtered = holdings.filter(h =>
     h.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (h.name && h.name.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  // Sort
+  const sortField = sort[0]?.sortKey ?? 'market_value'
+  const sortAsc = sort[0]?.direction === 'ascending'
+
   const sorted = [...filtered].sort((a, b) => {
-    let valA: any = a[sortField as keyof HoldingItem]
-    let valB: any = b[sortField as keyof HoldingItem]
+    let valA: any
+    let valB: any
 
     if (sortField === 'capital_gain' || sortField === 'income' || sortField === 'total_return') {
       valA = parseFloat(a.metrics?.[sortField] || '0')
       valB = parseFloat(b.metrics?.[sortField] || '0')
-    } else if (sortField !== 'symbol') {
-      valA = parseFloat(valA || '0')
-      valB = parseFloat(valB || '0')
+    } else if (sortField === 'symbol') {
+      valA = a.symbol
+      valB = b.symbol
+    } else {
+      valA = parseFloat(a[sortField] || '0')
+      valB = parseFloat(b[sortField] || '0')
     }
 
     if (valA < valB) return sortAsc ? -1 : 1
@@ -71,127 +85,137 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     return 0
   })
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortAsc(!sortAsc)
-    } else {
-      setSortField(field)
-      setSortAsc(false)
-    }
-  }
-
-  // Totals
   const totalValue = sorted.reduce((sum, h) => sum + parseFloat(h.market_value || '0'), 0)
-  const totalCostBase = sorted.reduce((sum, h) => sum + parseFloat(h.cost_base || '0'), 0)
   const totalCapGain = sorted.reduce((sum, h) => sum + parseFloat(h.metrics?.capital_gain || '0'), 0)
   const totalIncome = sorted.reduce((sum, h) => sum + parseFloat(h.metrics?.income || '0'), 0)
   const totalReturn = totalCapGain + totalIncome
 
+  const columns: TableColumn<HoldingItem>[] = [
+    {
+      key: 'symbol',
+      header: 'Ticker / Name',
+      width: proportional(2),
+      sortable: true,
+      renderCell: h => (
+        <Link href={`/portfolios/${portfolioId}/holdings/${h.id}`} isStandalone>
+          <VStack gap={0}>
+            <HStack gap={1.5} vAlign="center">
+              <Text weight="bold">{h.symbol}</Text>
+              {h.drp_enabled && <Badge label="DRP" variant="green" />}
+            </HStack>
+            <Text type="supporting" maxLines={1}>{h.name || h.symbol}</Text>
+          </VStack>
+        </Link>
+      )
+    },
+    {
+      key: 'last_price',
+      header: 'Last Price',
+      width: proportional(1),
+      align: 'end',
+      sortable: true,
+      renderCell: h => <Text hasTabularNumbers>{formatCurrency(h.last_price)}</Text>
+    },
+    {
+      key: 'quantity',
+      header: 'Units',
+      width: proportional(1),
+      align: 'end',
+      sortable: true,
+      renderCell: h => <Text hasTabularNumbers>{parseFloat(h.quantity).toFixed(2)}</Text>
+    },
+    {
+      key: 'market_value',
+      header: 'Market Value',
+      width: proportional(1),
+      align: 'end',
+      sortable: true,
+      renderCell: h => <Text weight="bold" hasTabularNumbers>{formatCurrency(h.market_value)}</Text>
+    },
+    {
+      key: 'capital_gain',
+      header: 'Capital Gain',
+      width: proportional(1),
+      align: 'end',
+      sortable: true,
+      renderCell: h => {
+        const capGain = parseFloat(h.metrics?.capital_gain || '0')
+        return <ColoredValue value={formatCurrency(capGain)} isPositive={capGain >= 0} />
+      }
+    },
+    {
+      key: 'income',
+      header: 'Income',
+      width: proportional(1),
+      align: 'end',
+      sortable: true,
+      renderCell: h => <Text hasTabularNumbers>{formatCurrency(h.metrics?.income || '0')}</Text>
+    },
+    {
+      key: 'total_return',
+      header: 'Total Return',
+      width: proportional(1),
+      align: 'end',
+      sortable: true,
+      renderCell: h => {
+        const totRet = parseFloat(h.metrics?.total_return || '0')
+        return <ColoredValue value={formatCurrency(totRet)} isPositive={totRet >= 0} />
+      }
+    },
+    {
+      key: 'chevron',
+      header: '',
+      width: proportional(0.3),
+      align: 'end',
+      renderCell: h => (
+        <Link href={`/portfolios/${portfolioId}/holdings/${h.id}`} label={`View ${h.symbol}`}>
+          <Icon icon={ChevronRight} size="sm" color="secondary" />
+        </Link>
+      )
+    }
+  ]
+
+  const sortablePlugin = useTableSortable<HoldingItem, SortKey>({
+    sort,
+    onSortChange: setSort
+  })
+
   return (
-    <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white tracking-tight">Holdings & Performance</h3>
-        <button
-          onClick={() => setGroupByTag(!groupByTag)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-            groupByTag
-              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-          }`}
-        >
-          <Tag className="w-3.5 h-3.5" />
-          {groupByTag ? 'Ungroup' : 'Group by Tag'}
-        </button>
-      </div>
+    <Card padding={0}>
+      <VStack gap={0}>
+        <Toolbar
+          label="Holdings actions"
+          startContent={<Heading level={3}>Holdings &amp; Performance</Heading>}
+          endContent={
+            <Button
+              label={groupByTag ? 'Ungroup' : 'Group by Tag'}
+              icon={<Icon icon={Tag} size="sm" />}
+              variant={groupByTag ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setGroupByTag(!groupByTag)}
+            />
+          }
+        />
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-900/60 text-slate-400 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-800">
-            <tr>
-              <th className="py-3 px-4 cursor-pointer hover:text-white" onClick={() => handleSort('symbol')}>
-                <div className="flex items-center gap-1">Ticker / Name <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('last_price')}>
-                <div className="flex items-center justify-end gap-1">Last Price <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('quantity')}>
-                <div className="flex items-center justify-end gap-1">Units <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('market_value')}>
-                <div className="flex items-center justify-end gap-1">Market Value <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('capital_gain')}>
-                <div className="flex items-center justify-end gap-1">Capital Gain <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('income')}>
-                <div className="flex items-center justify-end gap-1">Income <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('total_return')}>
-                <div className="flex items-center justify-end gap-1">Total Return <ArrowUpDown className="w-3 h-3" /></div>
-              </th>
-              <th className="py-3 px-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/60">
-            {sorted.map((h) => {
-              const capGain = parseFloat(h.metrics?.capital_gain || '0')
-              const income = parseFloat(h.metrics?.income || '0')
-              const totRet = parseFloat(h.metrics?.total_return || '0')
+        <Table<HoldingItem>
+          data={sorted}
+          columns={columns}
+          idKey="id"
+          hasHover
+          dividers="rows"
+          plugins={{ sortable: sortablePlugin }}
+        />
 
-              return (
-                <tr key={h.id} className="hover:bg-slate-800/40 transition">
-                  <td className="py-3.5 px-4">
-                    <Link to={`/portfolios/${portfolioId}/holdings/${h.id}`} className="block group">
-                      <div className="font-bold text-white group-hover:text-emerald-400 transition flex items-center gap-2">
-                        {h.symbol}
-                        {h.drp_enabled && (
-                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            DRP
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-400 truncate max-w-[180px]">{h.name || h.symbol}</div>
-                    </Link>
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-medium text-slate-200">
-                    {formatCurrency(h.last_price)}
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-medium text-slate-200">
-                    {parseFloat(h.quantity).toFixed(2)}
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-bold text-white">
-                    {formatCurrency(h.market_value)}
-                  </td>
-                  <td className={`py-3.5 px-4 text-right font-semibold ${capGain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatCurrency(capGain)}
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-semibold text-emerald-400">
-                    {formatCurrency(income)}
-                  </td>
-                  <td className={`py-3.5 px-4 text-right font-bold ${totRet >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatCurrency(totRet)}
-                  </td>
-                  <td className="py-3.5 px-2 text-right">
-                    <Link to={`/portfolios/${portfolioId}/holdings/${h.id}`} className="text-slate-500 hover:text-white transition">
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-          <tfoot className="bg-slate-900 font-bold border-t-2 border-slate-800 text-white">
-            <tr>
-              <td className="py-4 px-4" colSpan={3}>Portfolio Totals</td>
-              <td className="py-4 px-4 text-right text-emerald-400">{formatCurrency(totalValue)}</td>
-              <td className={`py-4 px-4 text-right ${totalCapGain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(totalCapGain)}</td>
-              <td className="py-4 px-4 text-right text-emerald-400">{formatCurrency(totalIncome)}</td>
-              <td className={`py-4 px-4 text-right ${totalReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{formatCurrency(totalReturn)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
+        <HStack padding={4} hAlign="between">
+          <Text weight="bold">Portfolio Totals</Text>
+          <HStack gap={6}>
+            <Text weight="bold" hasTabularNumbers>{formatCurrency(totalValue)}</Text>
+            <ColoredValue value={formatCurrency(totalCapGain)} isPositive={totalCapGain >= 0} />
+            <Text weight="bold" hasTabularNumbers>{formatCurrency(totalIncome)}</Text>
+            <ColoredValue value={formatCurrency(totalReturn)} isPositive={totalReturn >= 0} />
+          </HStack>
+        </HStack>
+      </VStack>
+    </Card>
   )
 }

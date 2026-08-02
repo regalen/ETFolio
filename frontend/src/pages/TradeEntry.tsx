@@ -2,7 +2,22 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
-import { ArrowLeft, Save, Plus, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { VStack, HStack } from '@astryxdesign/core/Layout'
+import { Grid } from '@astryxdesign/core/Grid'
+import { Card } from '@astryxdesign/core/Card'
+import { Heading, Text } from '@astryxdesign/core/Text'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { TextArea } from '@astryxdesign/core/TextArea'
+import { DateInput } from '@astryxdesign/core/DateInput'
+import type { ISODateString } from '@astryxdesign/core/Calendar'
+import { Selector } from '@astryxdesign/core/Selector'
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
+import { Button } from '@astryxdesign/core/Button'
+import { IconButton } from '@astryxdesign/core/IconButton'
+import { Icon } from '@astryxdesign/core/Icon'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Divider } from '@astryxdesign/core/Divider'
+import { ArrowLeft, Save, Plus } from 'lucide-react'
 
 export const TradeEntry: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -12,7 +27,7 @@ export const TradeEntry: React.FC = () => {
 
   const [symbol, setSymbol] = useState('VAS')
   const [type, setType] = useState<'BUY' | 'SELL'>('BUY')
-  const [tradeDate, setTradeDate] = useState(new Date().toISOString().split('T')[0])
+  const [tradeDate, setTradeDate] = useState(new Date().toISOString().split('T')[0] as ISODateString)
   const [broker, setBroker] = useState('Stake')
   const [quantity, setQuantity] = useState('')
   const [unitPrice, setUnitPrice] = useState('')
@@ -25,7 +40,6 @@ export const TradeEntry: React.FC = () => {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  // Debounced search
   useEffect(() => {
     if (!symbol.trim()) {
       setSearchResults([])
@@ -89,225 +103,158 @@ export const TradeEntry: React.FC = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <button
+    <VStack gap={6} style={{ maxWidth: 672, margin: '0 auto' }}>
+      <HStack gap={3} vAlign="center">
+        <IconButton
+          label="Back to dashboard"
+          icon={<Icon icon={ArrowLeft} size="sm" />}
+          variant="secondary"
           onClick={() => navigate(`/portfolios/${portfolioId}`)}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Record Trade</h1>
-          <p className="text-sm text-slate-400">Add a buy or sell trade to your portfolio</p>
-        </div>
-      </div>
+        />
+        <VStack gap={0}>
+          <Heading level={1}>Record Trade</Heading>
+          <Text type="supporting">Add a buy or sell trade to your portfolio</Text>
+        </VStack>
+      </HStack>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <Banner status="error" title={error} container="card" />}
+      {successMsg && <Banner status="success" title={successMsg} container="card" />}
 
-      {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
+      <Card>
+        <VStack gap={5}>
+          <VStack gap={2}>
+            <Text type="label" color="secondary">Trade Type</Text>
+            <SegmentedControl value={type} onChange={v => setType(v as 'BUY' | 'SELL')} label="Trade type" layout="fill">
+              <SegmentedControlItem value="BUY" label="BUY" />
+              <SegmentedControlItem value="SELL" label="SELL" />
+            </SegmentedControl>
+          </VStack>
 
-      <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-5">
-        {/* Type selector */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Trade Type</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setType('BUY')}
-              className={`py-2.5 rounded-xl font-bold text-sm border transition ${
-                type === 'BUY'
-                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-900/30'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-              }`}
-            >
-              BUY
-            </button>
-            <button
-              type="button"
-              onClick={() => setType('SELL')}
-              className={`py-2.5 rounded-xl font-bold text-sm border transition ${
-                type === 'SELL'
-                  ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-900/30'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-              }`}
-            >
-              SELL
-            </button>
-          </div>
-        </div>
+          <VStack gap={1} style={{ position: 'relative' }}>
+            <TextInput
+              label="ASX Ticker Symbol"
+              value={symbol}
+              onChange={v => {
+                setSymbol(v.toUpperCase())
+                setShowResults(true)
+              }}
+              onFocus={() => setShowResults(true)}
+              placeholder="e.g. VAS, DHHF, VGS"
+              isRequired
+            />
 
-        {/* Ticker Autocomplete */}
-        <div className="relative">
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">ASX Ticker Symbol</label>
-          <input
-            type="text"
-            required
-            value={symbol}
-            onChange={e => {
-              setSymbol(e.target.value)
-              setShowResults(true)
-            }}
-            onFocus={() => setShowResults(true)}
-            placeholder="e.g. VAS, DHHF, VGS"
-            className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono uppercase text-sm focus:outline-none focus:border-emerald-500 transition"
-          />
+            {showResults && searchResults.length > 0 && (
+              <Card
+                elevation="high"
+                padding={1}
+                style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50, maxHeight: 192, overflowY: 'auto' }}
+              >
+                <VStack gap={0}>
+                  {searchResults.map(item => (
+                    <HStack
+                      key={item.symbol}
+                      as="button"
+                      hAlign="between"
+                      vAlign="center"
+                      padding={2}
+                      onClick={() => {
+                        setSymbol(item.symbol.replace('.AX', ''))
+                        setShowResults(false)
+                      }}
+                      style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none' }}
+                    >
+                      <Text weight="bold" color="accent">{item.symbol}</Text>
+                      <Text type="supporting" maxLines={1}>{item.name}</Text>
+                    </HStack>
+                  ))}
+                </VStack>
+              </Card>
+            )}
+          </VStack>
 
-          {showResults && searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 mt-1 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl z-50 max-h-48 overflow-y-auto">
-              {searchResults.map(item => (
-                <button
-                  key={item.symbol}
-                  type="button"
-                  onClick={() => {
-                    setSymbol(item.symbol.replace('.AX', ''))
-                    setShowResults(false)
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-slate-800 flex items-center justify-between text-sm transition"
-                >
-                  <span className="font-mono font-bold text-emerald-400">{item.symbol}</span>
-                  <span className="text-xs text-slate-400 truncate max-w-[250px]">{item.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Trade Date & Broker */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Trade Date</label>
-            <input
-              type="date"
-              required
+          <Grid columns={{ minWidth: 200 }} gap={4}>
+            <DateInput
+              label="Trade Date"
               value={tradeDate}
-              onChange={e => setTradeDate(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500 transition"
+              onChange={v => v && setTradeDate(v)}
+              isRequired
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Broker</label>
-            <input
-              type="text"
-              list="broker-list"
+            <TextInput
+              label="Broker"
               value={broker}
-              onChange={e => setBroker(e.target.value)}
+              onChange={setBroker}
               placeholder="e.g. Stake, Pearler, CMC"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500 transition"
             />
-            <datalist id="broker-list">
-              <option value="Stake" />
-              <option value="Pearler" />
-              <option value="CMC Markets" />
-              <option value="CommSec" />
-              <option value="Selfwealth" />
-            </datalist>
-          </div>
-        </div>
+          </Grid>
 
-        {/* Quantity, Unit Price, Brokerage */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Quantity (Units)</label>
-            <input
-              type="number"
-              step="any"
-              required
+          <Grid columns={{ minWidth: 160 }} gap={4}>
+            <TextInput
+              label="Quantity (Units)"
+              type="text"
               value={quantity}
-              onChange={e => setQuantity(e.target.value)}
+              onChange={setQuantity}
               placeholder="0.00"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-emerald-500 transition"
+              isRequired
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Unit Price ($)</label>
-            <input
-              type="number"
-              step="any"
-              required
+            <TextInput
+              label="Unit Price ($)"
+              type="text"
               value={unitPrice}
-              onChange={e => setUnitPrice(e.target.value)}
+              onChange={setUnitPrice}
               placeholder="0.00"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-emerald-500 transition"
+              isRequired
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Brokerage ($)</label>
-            <input
-              type="number"
-              step="any"
+            <TextInput
+              label="Brokerage ($)"
+              type="text"
               value={brokerage}
-              onChange={e => setBrokerage(e.target.value)}
+              onChange={setBrokerage}
               placeholder="3.00"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-emerald-500 transition"
             />
-          </div>
-        </div>
+          </Grid>
 
-        {/* Sell Allocation Method if SELL */}
-        {type === 'SELL' && (
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">CGT Allocation Method</label>
-            <select
+          {type === 'SELL' && (
+            <Selector
+              label="CGT Allocation Method"
               value={sellAllocationMethod}
-              onChange={e => setSellAllocationMethod(e.target.value as any)}
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500 transition"
-            >
-              <option value="min_cgt">Min CGT Tax Minimisation (Recommended)</option>
-              <option value="fifo">FIFO (First In, First Out)</option>
-              <option value="lifo">LIFO (Last In, First Out)</option>
-            </select>
-          </div>
-        )}
+              onChange={v => setSellAllocationMethod(v as 'fifo' | 'lifo' | 'min_cgt')}
+              options={[
+                { value: 'min_cgt', label: 'Min CGT Tax Minimisation (Recommended)' },
+                { value: 'fifo', label: 'FIFO (First In, First Out)' },
+                { value: 'lifo', label: 'LIFO (Last In, First Out)' }
+              ]}
+            />
+          )}
 
-        {/* Notes */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Notes (Optional)</label>
-          <textarea
+          <TextArea
+            label="Notes"
+            isOptional
             value={notes}
-            onChange={e => setNotes(e.target.value)}
+            onChange={setNotes}
             rows={2}
             placeholder="Trade comments, order ID..."
-            className="w-full px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500 transition"
           />
-        </div>
 
-        {/* Action Buttons */}
-        <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => handleSubmit('save_another')}
-            disabled={tradeMutation.isPending}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Save & Add Another
-          </button>
+          <Divider />
 
-          <button
-            type="button"
-            onClick={() => handleSubmit('save')}
-            disabled={tradeMutation.isPending}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5"
-          >
-            <Save className="w-4 h-4" />
-            {tradeMutation.isPending ? 'Saving...' : 'Save Trade'}
-          </button>
-        </div>
-      </div>
-    </div>
+          <HStack hAlign="end" gap={3}>
+            <Button
+              label="Save & Add Another"
+              variant="secondary"
+              icon={<Icon icon={Plus} size="sm" />}
+              isDisabled={tradeMutation.isPending}
+              onClick={() => handleSubmit('save_another')}
+            />
+            <Button
+              label={tradeMutation.isPending ? 'Saving...' : 'Save Trade'}
+              variant="primary"
+              icon={<Icon icon={Save} size="sm" />}
+              isLoading={tradeMutation.isPending}
+              onClick={() => handleSubmit('save')}
+            />
+          </HStack>
+        </VStack>
+      </Card>
+    </VStack>
   )
 }

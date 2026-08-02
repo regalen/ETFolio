@@ -1,13 +1,17 @@
 import React from 'react'
+import { Card } from '@astryxdesign/core/Card'
+import { VStack, HStack } from '@astryxdesign/core/Layout'
+import { Text } from '@astryxdesign/core/Text'
+import { Icon } from '@astryxdesign/core/Icon'
 import { formatCurrency, formatPercent } from '../lib/format'
-import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { TrendingUp, TrendingDown, LucideIcon } from 'lucide-react'
 
 interface MetricCardProps {
   title: string
   dollarValue: string | number
   percentValue?: string | number
   subtitle?: string
-  icon?: React.ReactNode
+  icon?: LucideIcon
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -23,30 +27,30 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   const isPositive = numPercent !== undefined ? numPercent >= 0 : numDollar >= 0
 
   return (
-    <div className="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{title}</span>
-        {icon && <div className="p-2 rounded-xl bg-slate-800 text-slate-300">{icon}</div>}
-      </div>
+    <Card>
+      <VStack gap={3}>
+        <HStack hAlign="between" vAlign="center">
+          <Text type="label" color="secondary">{title}</Text>
+          {icon && <Icon icon={icon} size="sm" color="accent" />}
+        </HStack>
 
-      <div className="space-y-1">
-        <div className="text-2xl font-bold text-white tracking-tight">
-          {formatCurrency(dollarValue)}
-        </div>
+        <VStack gap={1}>
+          <Text type="display-3" weight="bold">{formatCurrency(dollarValue)}</Text>
 
-        {numPercent !== undefined && (
-          <div className={`flex items-center gap-1 text-xs font-semibold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-            {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-            <span>{formatPercent(percentValue)} p.a.</span>
-          </div>
-        )}
+          {numPercent !== undefined && (
+            <HStack gap={1} vAlign="center">
+              <Icon
+                icon={isPositive ? TrendingUp : TrendingDown}
+                size="xsm"
+                color={isPositive ? 'success' : 'error'}
+              />
+              <Text type="supporting">{formatPercent(percentValue)} p.a.</Text>
+            </HStack>
+          )}
 
-        {subtitle && (
-          <div className="text-xs text-slate-400">
-            {subtitle}
-          </div>
-        )}
-      </div>
-    </div>
+          {subtitle && <Text type="supporting">{subtitle}</Text>}
+        </VStack>
+      </VStack>
+    </Card>
   )
 }

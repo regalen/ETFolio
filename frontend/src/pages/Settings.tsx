@@ -2,13 +2,27 @@ import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
-import { Settings as SettingsIcon, Users, Tag, Trash2, Plus, ArrowLeft, Shield } from 'lucide-react'
+import { VStack, HStack } from '@astryxdesign/core/Layout'
+import { Card } from '@astryxdesign/core/Card'
+import { Heading, Text } from '@astryxdesign/core/Text'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { Selector } from '@astryxdesign/core/Selector'
+import { Button } from '@astryxdesign/core/Button'
+import { IconButton } from '@astryxdesign/core/IconButton'
+import { Icon } from '@astryxdesign/core/Icon'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Badge } from '@astryxdesign/core/Badge'
+import { Token } from '@astryxdesign/core/Token'
+import { Divider } from '@astryxdesign/core/Divider'
+import { useToast } from '@astryxdesign/core/Toast'
+import { ArrowLeft, Users, Tag } from 'lucide-react'
 
 export const SettingsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const portfolioId = Number(id)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const showToast = useToast()
 
   const [portfolioName, setPortfolioName] = useState('')
   const [shareUsername, setShareUsername] = useState('')
@@ -44,7 +58,7 @@ export const SettingsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolios'] })
       queryClient.invalidateQueries({ queryKey: ['portfolio', portfolioId] })
-      alert('Portfolio renamed successfully!')
+      showToast({ body: 'Portfolio renamed successfully!', type: 'info' })
     }
   })
 
@@ -96,179 +110,177 @@ export const SettingsPage: React.FC = () => {
   })
 
   if (!portfolio) {
-    return <div className="p-8 text-center text-slate-400">Loading settings...</div>
+    return (
+      <VStack padding={8} hAlign="center">
+        <Text type="supporting">Loading settings...</Text>
+      </VStack>
+    )
   }
 
   const isOwner = portfolio.permission === 'owner'
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <div className="flex items-center gap-3">
-        <button
+    <VStack gap={6} style={{ maxWidth: 768, margin: '0 auto' }}>
+      <HStack gap={3} vAlign="center">
+        <IconButton
+          label="Back to dashboard"
+          icon={<Icon icon={ArrowLeft} size="sm" />}
+          variant="secondary"
           onClick={() => navigate(`/portfolios/${portfolioId}`)}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Portfolio Settings</h1>
-          <p className="text-sm text-slate-400">Manage portfolio configuration, sharing, and tags</p>
-        </div>
-      </div>
+        />
+        <VStack gap={0}>
+          <Heading level={1}>Portfolio Settings</Heading>
+          <Text type="supporting">Manage portfolio configuration, sharing, and tags</Text>
+        </VStack>
+      </HStack>
 
-      {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {errorMsg}
-        </div>
-      )}
+      {errorMsg && <Banner status="error" title={errorMsg} container="card" />}
 
-      {/* Rename Portfolio */}
-      <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-        <h3 className="text-sm font-semibold text-white">Portfolio Name</h3>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={portfolioName}
-            onChange={e => setPortfolioName(e.target.value)}
-            disabled={!isOwner}
-            className="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-emerald-500 transition disabled:opacity-50"
-          />
+      <Card>
+        <VStack gap={4}>
+          <Heading level={3}>Portfolio Name</Heading>
+          <HStack gap={3}>
+            <TextInput
+              label="Portfolio name"
+              isLabelHidden
+              value={portfolioName}
+              onChange={setPortfolioName}
+              isDisabled={!isOwner}
+              width="100%"
+            />
+            {isOwner && (
+              <Button label="Rename" variant="primary" onClick={() => updatePortfolioMutation.mutate()} />
+            )}
+          </HStack>
+        </VStack>
+      </Card>
+
+      <Card>
+        <VStack gap={4}>
+          <HStack gap={2} vAlign="center">
+            <Icon icon={Users} size="sm" color="accent" />
+            <Heading level={3}>Access Sharing Manager</Heading>
+          </HStack>
+
           {isOwner && (
-            <button
-              onClick={() => updatePortfolioMutation.mutate()}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition"
-            >
-              Rename
-            </button>
+            <HStack gap={3} wrap="wrap">
+              <TextInput
+                label="Username to share with"
+                isLabelHidden
+                placeholder="Username to share with"
+                value={shareUsername}
+                onChange={setShareUsername}
+              />
+              <Selector
+                label="Permission"
+                isLabelHidden
+                value={sharePermission}
+                onChange={v => setSharePermission(v as 'view' | 'edit')}
+                options={[
+                  { value: 'view', label: 'View Only' },
+                  { value: 'edit', label: 'Can Edit' }
+                ]}
+              />
+              <Button
+                label="Add Access"
+                variant="primary"
+                isDisabled={!shareUsername.trim()}
+                onClick={() => addShareMutation.mutate()}
+              />
+            </HStack>
           )}
-        </div>
-      </div>
 
-      {/* Sharing Manager */}
-      <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Users className="w-4 h-4 text-emerald-400" />
-          Access Sharing Manager
-        </h3>
+          <VStack gap={0}>
+            {shares.map((s: any) => (
+              <React.Fragment key={s.id}>
+                <HStack padding={3} hAlign="between" vAlign="center">
+                  <HStack gap={2} vAlign="center">
+                    <Text weight="bold">{s.username}</Text>
+                    <Badge label={s.permission} variant="neutral" />
+                  </HStack>
+                  {isOwner && (
+                    <Button
+                      label="Revoke"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => revokeShareMutation.mutate(s.id)}
+                    />
+                  )}
+                </HStack>
+                <Divider />
+              </React.Fragment>
+            ))}
+            {shares.length === 0 && (
+              <Text type="supporting">Not shared with any users yet.</Text>
+            )}
+          </VStack>
+        </VStack>
+      </Card>
 
-        {isOwner && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input
-              type="text"
-              placeholder="Username to share with"
-              value={shareUsername}
-              onChange={e => setShareUsername(e.target.value)}
-              className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-            <select
-              value={sharePermission}
-              onChange={e => setSharePermission(e.target.value as any)}
-              className="px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white"
-            >
-              <option value="view">View Only</option>
-              <option value="edit">Can Edit</option>
-            </select>
-            <button
-              onClick={() => addShareMutation.mutate()}
-              disabled={!shareUsername.trim()}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition disabled:opacity-50"
-            >
-              Add Access
-            </button>
-          </div>
-        )}
+      <Card>
+        <VStack gap={4}>
+          <HStack gap={2} vAlign="center">
+            <Icon icon={Tag} size="sm" color="accent" />
+            <Heading level={3}>Holding Custom Tags</Heading>
+          </HStack>
 
-        <div className="divide-y divide-slate-800">
-          {shares.map((s: any) => (
-            <div key={s.id} className="py-3 flex items-center justify-between">
-              <div>
-                <span className="font-bold text-white text-sm">{s.username}</span>
-                <span className="ml-2 text-xs uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                  {s.permission}
-                </span>
-              </div>
-              {isOwner && (
-                <button
-                  onClick={() => revokeShareMutation.mutate(s.id)}
-                  className="text-xs text-red-400 hover:underline"
-                >
-                  Revoke
-                </button>
-              )}
-            </div>
-          ))}
-          {shares.length === 0 && (
-            <div className="py-2 text-xs text-slate-500">Not shared with any users yet.</div>
+          {isOwner && (
+            <HStack gap={3}>
+              <TextInput
+                label="New tag name"
+                isLabelHidden
+                placeholder="New tag name (e.g. Core, High Yield)"
+                value={newTagName}
+                onChange={setNewTagName}
+                width="100%"
+              />
+              <Button
+                label="Add Tag"
+                variant="primary"
+                isDisabled={!newTagName.trim()}
+                onClick={() => addTagMutation.mutate()}
+              />
+            </HStack>
           )}
-        </div>
-      </div>
 
-      {/* Tags Manager */}
-      <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Tag className="w-4 h-4 text-emerald-400" />
-          Holding Custom Tags
-        </h3>
+          <HStack gap={2} wrap="wrap">
+            {tags.map((t: any) => (
+              <Token
+                key={t.id}
+                label={t.name}
+                onRemove={isOwner ? () => deleteTagMutation.mutate(t.id) : undefined}
+              />
+            ))}
+          </HStack>
+        </VStack>
+      </Card>
 
-        {isOwner && (
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="New tag name (e.g. Core, High Yield)"
-              value={newTagName}
-              onChange={e => setNewTagName(e.target.value)}
-              className="flex-1 px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
-            />
-            <button
-              onClick={() => addTagMutation.mutate()}
-              disabled={!newTagName.trim()}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition disabled:opacity-50"
-            >
-              Add Tag
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 pt-2">
-          {tags.map((t: any) => (
-            <div key={t.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-white">
-              <span>{t.name}</span>
-              {isOwner && (
-                <button onClick={() => deleteTagMutation.mutate(t.id)} className="text-slate-400 hover:text-red-400">
-                  &times;
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Danger Zone */}
       {isOwner && (
-        <div className="glass-card p-6 rounded-2xl border border-red-900/30 space-y-4">
-          <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider">Delete Portfolio</h3>
-          <p className="text-xs text-slate-400">
-            Permanently delete this portfolio and all associated holdings, trades, distributions, and attachments.
-            Type <strong className="text-white">{portfolio.name}</strong> to confirm deletion:
-          </p>
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              value={deleteConfirm}
-              onChange={e => setDeleteConfirm(e.target.value)}
-              placeholder={`Type ${portfolio.name} to confirm`}
-              className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-red-500"
-            />
-            <button
-              disabled={deleteConfirm !== portfolio.name}
-              onClick={() => deletePortfolioMutation.mutate()}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-sm transition disabled:opacity-40"
-            >
-              Delete Portfolio
-            </button>
-          </div>
-        </div>
+        <Card variant="red">
+          <VStack gap={3}>
+            <Text type="label" color="secondary">Delete Portfolio</Text>
+            <Text type="supporting">
+              Permanently delete this portfolio and all associated holdings, trades, distributions, and attachments.
+              Type <Text as="span" weight="bold">{portfolio.name}</Text> to confirm deletion:
+            </Text>
+            <HStack gap={3}>
+              <TextInput
+                label="Confirm portfolio name"
+                isLabelHidden
+                value={deleteConfirm}
+                onChange={setDeleteConfirm}
+                placeholder={`Type ${portfolio.name} to confirm`}
+              />
+              <Button
+                label="Delete Portfolio"
+                variant="destructive"
+                isDisabled={deleteConfirm !== portfolio.name}
+                onClick={() => deletePortfolioMutation.mutate()}
+              />
+            </HStack>
+          </VStack>
+        </Card>
       )}
-    </div>
+    </VStack>
   )
 }

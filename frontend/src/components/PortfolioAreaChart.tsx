@@ -9,6 +9,9 @@ import {
   Tooltip,
   CartesianGrid
 } from 'recharts'
+import { VStack } from '@astryxdesign/core/Layout'
+import { Text } from '@astryxdesign/core/Text'
+import { Card } from '@astryxdesign/core/Card'
 import { formatCurrency, formatDate } from '../lib/format'
 
 interface SeriesItem {
@@ -21,6 +24,22 @@ interface PortfolioAreaChartProps {
   series: SeriesItem[]
 }
 
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null
+  return (
+    <Card padding={3}>
+      <VStack gap={1}>
+        <Text type="supporting">{formatDate(label || '')}</Text>
+        {payload.map(p => (
+          <Text key={p.name} type="body" weight="bold">
+            {p.name === 'value' ? 'Market Value' : 'Cost Base'}: {formatCurrency(p.value)}
+          </Text>
+        ))}
+      </VStack>
+    </Card>
+  )
+}
+
 export const PortfolioAreaChart: React.FC<PortfolioAreaChartProps> = ({ series }) => {
   const chartData = series.map(s => ({
     date: s.date,
@@ -30,62 +49,56 @@ export const PortfolioAreaChart: React.FC<PortfolioAreaChartProps> = ({ series }
 
   if (!series || series.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
-        No valuation series data available for selected period.
-      </div>
+      <VStack height={288} vAlign="center" hAlign="center">
+        <Text type="supporting">No valuation series data available for selected period.</Text>
+      </VStack>
     )
   }
 
   return (
-    <div className="w-full h-72">
+    <div style={{ width: '100%', height: 288 }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
           <defs>
             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+              <stop offset="5%" stopColor="var(--color-icon-green)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="var(--color-icon-green)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+          <CartesianGrid horizontal vertical={false} stroke="var(--color-border)" />
           <XAxis
             dataKey="date"
-            tickFormatter={(val) => formatDate(val)}
-            stroke="#64748b"
-            tick={{ fontSize: 11 }}
+            tickFormatter={val => formatDate(val)}
+            stroke="var(--color-text-secondary)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+            axisLine={false}
+            tickLine={false}
           />
           <YAxis
-            tickFormatter={(val) => `$${(val / 1000).toFixed(1)}k`}
-            stroke="#64748b"
-            tick={{ fontSize: 11 }}
+            tickFormatter={val => `$${(val / 1000).toFixed(1)}k`}
+            stroke="var(--color-text-secondary)"
+            tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+            axisLine={false}
+            tickLine={false}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#0f172a',
-              borderColor: '#334155',
-              borderRadius: '12px',
-              fontSize: '12px'
-            }}
-            labelFormatter={(label) => formatDate(label as string)}
-            formatter={(val: number, name: string) => [
-              formatCurrency(val),
-              name === 'value' ? 'Market Value' : 'Cost Base'
-            ]}
-          />
+          <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--color-border)' }} />
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#10b981"
+            stroke="var(--color-icon-green)"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorValue)"
+            isAnimationActive={false}
           />
           <Line
             type="monotone"
             dataKey="cost_base"
-            stroke="#94a3b8"
+            stroke="var(--color-text-secondary)"
             strokeWidth={1.5}
             strokeDasharray="4 4"
             dot={false}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

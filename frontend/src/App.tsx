@@ -1,7 +1,11 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+import { AppShell } from '@astryxdesign/core/AppShell'
+import { LinkProvider } from '@astryxdesign/core/Link'
 import { Navbar } from './components/Navbar'
+import { ThemeModeProvider } from './theme/ThemeModeProvider'
+import { RouterLinkAdapter } from './lib/routerLink'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Dashboard } from './pages/Dashboard'
@@ -22,35 +26,36 @@ const queryClient = new QueryClient({
 
 const AppLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
-      </main>
-    </div>
+    <AppShell topNav={<Navbar />} contentPadding={6}>
+      <Outlet />
+    </AppShell>
   )
 }
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+    <ThemeModeProvider>
+      <LinkProvider component={RouterLinkAdapter}>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/portfolios/:id" element={<Dashboard />} />
-            <Route path="/portfolios/:id/trades/new" element={<TradeEntry />} />
-            <Route path="/portfolios/:id/holdings/:hid" element={<HoldingDetail />} />
-            <Route path="/portfolios/:id/reports" element={<Reports />} />
-            <Route path="/portfolios/:id/import" element={<Importer />} />
-            <Route path="/portfolios/:id/settings" element={<SettingsPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/portfolios/:id" element={<Dashboard />} />
+                <Route path="/portfolios/:id/trades/new" element={<TradeEntry />} />
+                <Route path="/portfolios/:id/holdings/:hid" element={<HoldingDetail />} />
+                <Route path="/portfolios/:id/reports" element={<Reports />} />
+                <Route path="/portfolios/:id/import" element={<Importer />} />
+                <Route path="/portfolios/:id/settings" element={<SettingsPage />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </LinkProvider>
+    </ThemeModeProvider>
   )
 }
 

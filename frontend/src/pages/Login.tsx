@@ -1,8 +1,28 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useState, type CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
-import { PieChart, Lock, User, AlertCircle } from 'lucide-react'
+import { Center } from '@astryxdesign/core/Center'
+import { VStack } from '@astryxdesign/core/Layout'
+import { Text, Heading } from '@astryxdesign/core/Text'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
+import { Icon } from '@astryxdesign/core/Icon'
+import { NavIcon } from '@astryxdesign/core/NavIcon'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Link } from '@astryxdesign/core/Link'
+import { PieChart } from 'lucide-react'
+
+const pageStyle: CSSProperties = {
+  minHeight: '100dvh',
+  backgroundColor: 'var(--color-background-body)',
+  padding: 'var(--spacing-6)',
+}
+const contentStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: 400,
+}
 
 export const Login: React.FC = () => {
   const navigate = useNavigate()
@@ -23,7 +43,6 @@ export const Login: React.FC = () => {
         if (portfolios && portfolios.length > 0) {
           navigate(`/portfolios/${portfolios[0].id}`)
         } else {
-          // Create default portfolio if user has none
           apiFetch<any>('/api/portfolios', {
             method: 'POST',
             body: JSON.stringify({ name: 'My Portfolio' })
@@ -43,70 +62,58 @@ export const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className="max-w-md w-full glass-card p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-2">
-            <PieChart className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Welcome back to ETFolio</h1>
-          <p className="text-sm text-slate-400">Self-hosted ASX ETF Portfolio & Tax Tracker</p>
-        </div>
+    <Center axis="both" style={pageStyle}>
+      <VStack gap={4} hAlign="center" style={contentStyle}>
+        <VStack gap={2} hAlign="center">
+          <NavIcon icon={<Icon icon={PieChart} size="md" />} />
+          <Text type="large" weight="bold">ETFolio</Text>
+        </VStack>
 
-        {error && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        <Card padding={8} width="100%">
+          <form onSubmit={handleSubmit}>
+            <VStack gap={4} hAlign="stretch">
+              <VStack gap={1} hAlign="center">
+                <Heading level={2}>Welcome back</Heading>
+                <Text type="supporting">Self-hosted ASX ETF Portfolio &amp; Tax Tracker</Text>
+              </VStack>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
-            <div className="relative">
-              <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-              <input
-                type="text"
-                required
+              {error && <Banner status="error" title={error} container="card" />}
+
+              <TextInput
+                label="Username"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition text-sm"
+                onChange={setUsername}
                 placeholder="Enter your username"
+                size="lg"
+                isRequired
               />
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-              <input
+              <TextInput
+                label="Password"
                 type="password"
-                required
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition text-sm"
+                onChange={setPassword}
                 placeholder="••••••••"
+                size="lg"
+                isRequired
               />
-            </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loginMutation.isPending}
-            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-900/30 transition disabled:opacity-50 text-sm"
-          >
-            {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+              <Button
+                label={loginMutation.isPending ? 'Signing in...' : 'Sign In'}
+                variant="primary"
+                size="lg"
+                type="submit"
+                isLoading={loginMutation.isPending}
+                width="100%"
+              />
+            </VStack>
+          </form>
+        </Card>
 
-        <div className="text-center text-xs text-slate-400">
-          Need an account?{' '}
-          <Link to="/register" className="text-emerald-400 hover:underline font-medium">
-            Register
-          </Link>
-        </div>
-      </div>
-    </div>
+        <Text type="supporting">
+          Need an account? <Link href="/register">Register</Link>
+        </Text>
+      </VStack>
+    </Center>
   )
 }

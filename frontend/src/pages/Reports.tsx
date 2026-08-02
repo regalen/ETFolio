@@ -3,7 +3,62 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 import { formatCurrency, formatDate } from '../lib/format'
-import { Download, FileText, Calendar, Info } from 'lucide-react'
+import { VStack, HStack } from '@astryxdesign/core/Layout'
+import { Grid } from '@astryxdesign/core/Grid'
+import { Card } from '@astryxdesign/core/Card'
+import { Heading, Text } from '@astryxdesign/core/Text'
+import { Selector } from '@astryxdesign/core/Selector'
+import { TabList, Tab } from '@astryxdesign/core/TabList'
+import { Table, proportional } from '@astryxdesign/core/Table'
+import type { TableColumn } from '@astryxdesign/core/Table'
+import { Link } from '@astryxdesign/core/Link'
+import { Icon } from '@astryxdesign/core/Icon'
+import { PlainAnchor } from '../lib/routerLink'
+import { Download } from 'lucide-react'
+
+function SummaryCard({ label, value, subtitle, emphasis }: { label: string; value: string; subtitle?: string; emphasis?: boolean }) {
+  return (
+    <Card variant={emphasis ? 'green' : 'default'}>
+      <VStack gap={1}>
+        <Text type="label" color="secondary">{label}</Text>
+        <Text type="display-3" weight="bold">{value}</Text>
+        {subtitle && <Text type="supporting">{subtitle}</Text>}
+      </VStack>
+    </Card>
+  )
+}
+
+interface DiscountedGain extends Record<string, unknown> {
+  symbol: string
+  acquire_date: string
+  sell_date: string
+  quantity: string
+  proceeds: string
+  cost_base: string
+  gross_gain_loss: string
+  net_taxable_gain: string
+}
+
+interface NonDiscountedGain extends Record<string, unknown> {
+  symbol: string
+  acquire_date: string
+  sell_date: string
+  quantity: string
+  proceeds: string
+  cost_base: string
+  net_taxable_gain: string
+}
+
+interface Distribution extends Record<string, unknown> {
+  symbol: string
+  pay_date: string
+  ex_date: string
+  gross_amount: string
+  franking_credits: string
+  amit_cost_base_increase: string
+  amit_cost_base_decrease: string
+  net_payment: string
+}
 
 export const Reports: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -13,255 +68,156 @@ export const Reports: React.FC = () => {
   const [fy, setFy] = useState(currentYear)
   const [activeTab, setActiveTab] = useState<'cgt' | 'income'>('cgt')
 
-  const { data: cgtReport, isLoading: cgtLoading } = useQuery<any>({
+  const { data: cgtReport } = useQuery<any>({
     queryKey: ['report_cgt', portfolioId, fy],
     queryFn: () => apiFetch(`/api/portfolios/${portfolioId}/reports/cgt?fy=${fy}`)
   })
 
-  const { data: incomeReport, isLoading: incomeLoading } = useQuery<any>({
+  const { data: incomeReport } = useQuery<any>({
     queryKey: ['report_income', portfolioId, fy],
     queryFn: () => apiFetch(`/api/portfolios/${portfolioId}/reports/income?fy=${fy}`)
   })
 
   const fyList = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3]
 
+  const discountedColumns: TableColumn<DiscountedGain>[] = [
+    { key: 'symbol', header: 'Symbol', width: proportional(1), renderCell: g => <Text weight="bold">{g.symbol}</Text> },
+    { key: 'acquire_date', header: 'Acquire Date', width: proportional(1), renderCell: g => <Text>{formatDate(g.acquire_date)}</Text> },
+    { key: 'sell_date', header: 'Sell Date', width: proportional(1), renderCell: g => <Text>{formatDate(g.sell_date)}</Text> },
+    { key: 'quantity', header: 'Qty', width: proportional(1), align: 'end', renderCell: g => <Text hasTabularNumbers>{parseFloat(g.quantity).toFixed(2)}</Text> },
+    { key: 'proceeds', header: 'Proceeds', width: proportional(1), align: 'end', renderCell: g => <Text hasTabularNumbers>{formatCurrency(g.proceeds)}</Text> },
+    { key: 'cost_base', header: 'Cost Base', width: proportional(1), align: 'end', renderCell: g => <Text hasTabularNumbers>{formatCurrency(g.cost_base)}</Text> },
+    { key: 'gross_gain_loss', header: 'Gross Gain', width: proportional(1), align: 'end', renderCell: g => <Text weight="semibold" hasTabularNumbers>{formatCurrency(g.gross_gain_loss)}</Text> },
+    { key: 'net_taxable_gain', header: 'Net Taxable (50%)', width: proportional(1), align: 'end', renderCell: g => <Text weight="bold" hasTabularNumbers>{formatCurrency(g.net_taxable_gain)}</Text> }
+  ]
+
+  const nonDiscountedColumns: TableColumn<NonDiscountedGain>[] = [
+    { key: 'symbol', header: 'Symbol', width: proportional(1), renderCell: g => <Text weight="bold">{g.symbol}</Text> },
+    { key: 'acquire_date', header: 'Acquire Date', width: proportional(1), renderCell: g => <Text>{formatDate(g.acquire_date)}</Text> },
+    { key: 'sell_date', header: 'Sell Date', width: proportional(1), renderCell: g => <Text>{formatDate(g.sell_date)}</Text> },
+    { key: 'quantity', header: 'Qty', width: proportional(1), align: 'end', renderCell: g => <Text hasTabularNumbers>{parseFloat(g.quantity).toFixed(2)}</Text> },
+    { key: 'proceeds', header: 'Proceeds', width: proportional(1), align: 'end', renderCell: g => <Text hasTabularNumbers>{formatCurrency(g.proceeds)}</Text> },
+    { key: 'cost_base', header: 'Cost Base', width: proportional(1), align: 'end', renderCell: g => <Text hasTabularNumbers>{formatCurrency(g.cost_base)}</Text> },
+    { key: 'net_taxable_gain', header: 'Taxable Gain', width: proportional(1), align: 'end', renderCell: g => <Text weight="bold" hasTabularNumbers>{formatCurrency(g.net_taxable_gain)}</Text> }
+  ]
+
+  const distributionColumns: TableColumn<Distribution>[] = [
+    { key: 'symbol', header: 'Symbol', width: proportional(1), renderCell: d => <Text weight="bold">{d.symbol}</Text> },
+    { key: 'pay_date', header: 'Pay Date', width: proportional(1), renderCell: d => <Text>{formatDate(d.pay_date)}</Text> },
+    { key: 'ex_date', header: 'Ex Date', width: proportional(1), renderCell: d => <Text>{formatDate(d.ex_date)}</Text> },
+    { key: 'gross_amount', header: 'Gross Amount', width: proportional(1), align: 'end', renderCell: d => <Text weight="bold" hasTabularNumbers>{formatCurrency(d.gross_amount)}</Text> },
+    { key: 'franking_credits', header: 'Franking Credits', width: proportional(1), align: 'end', renderCell: d => <Text hasTabularNumbers>{formatCurrency(d.franking_credits)}</Text> },
+    { key: 'amit_cost_base_increase', header: 'AMIT Increase', width: proportional(1), align: 'end', renderCell: d => <Text hasTabularNumbers>+{formatCurrency(d.amit_cost_base_increase)}</Text> },
+    { key: 'amit_cost_base_decrease', header: 'AMIT Decrease', width: proportional(1), align: 'end', renderCell: d => <Text hasTabularNumbers>-{formatCurrency(d.amit_cost_base_decrease)}</Text> },
+    { key: 'net_payment', header: 'Net Payment', width: proportional(1), align: 'end', renderCell: d => <Text weight="bold" hasTabularNumbers>{formatCurrency(d.net_payment)}</Text> }
+  ]
+
   return (
-    <div className="space-y-6">
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Australian Tax Reports</h1>
-          <p className="text-sm text-slate-400">Capital gains tax (CGT) & taxable income reports</p>
-        </div>
+    <VStack gap={6}>
+      <HStack hAlign="between" vAlign="center" wrap="wrap" gap={4}>
+        <VStack gap={0}>
+          <Heading level={1}>Australian Tax Reports</Heading>
+          <Text type="supporting">Capital gains tax (CGT) &amp; taxable income reports</Text>
+        </VStack>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
-            <Calendar className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-semibold text-slate-400 uppercase">Financial Year:</span>
-            <select
-              value={fy}
-              onChange={e => setFy(Number(e.target.value))}
-              className="bg-transparent text-white font-bold text-sm focus:outline-none cursor-pointer"
-            >
-              {fyList.map(y => (
-                <option key={y} value={y} className="bg-slate-900 text-white">
-                  FY{y} (1 Jul {y - 1} – 30 Jun {y})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <a
+        <HStack gap={3} vAlign="center">
+          <Selector
+            label="Financial Year"
+            isLabelHidden
+            value={String(fy)}
+            onChange={v => setFy(Number(v))}
+            options={fyList.map(y => ({ value: String(y), label: `FY${y} (1 Jul ${y - 1} – 30 Jun ${y})` }))}
+          />
+          <Link
+            as={PlainAnchor}
             href={`/api/portfolios/${portfolioId}/reports/${activeTab}?fy=${fy}&format=csv`}
             download
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-900/30 transition"
           >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </a>
-        </div>
-      </div>
+            <HStack gap={1.5} vAlign="center">
+              <Icon icon={Download} size="sm" />
+              <Text weight="semibold">Export CSV</Text>
+            </HStack>
+          </Link>
+        </HStack>
+      </HStack>
 
-      {/* Tabs */}
-      <div className="border-b border-slate-800 flex items-center gap-2">
-        <button
-          onClick={() => setActiveTab('cgt')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
-            activeTab === 'cgt'
-              ? 'border-emerald-500 text-emerald-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Realised CGT Report
-        </button>
-        <button
-          onClick={() => setActiveTab('income')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
-            activeTab === 'income'
-              ? 'border-emerald-500 text-emerald-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Taxable Income Report
-        </button>
-      </div>
+      <TabList value={activeTab} onChange={v => setActiveTab(v as 'cgt' | 'income')} hasDivider>
+        <Tab value="cgt" label="Realised CGT Report" />
+        <Tab value="income" label="Taxable Income Report" />
+      </TabList>
 
-      {/* TAB CONTENT: CGT Report */}
       {activeTab === 'cgt' && (
-        <div className="space-y-6">
-          {cgtReport ? (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Discounted Gains (50%)</div>
-                  <div className="text-xl font-bold text-emerald-400 mt-1">{formatCurrency(cgtReport.summary.net_discounted_gains)}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">Gross: {formatCurrency(cgtReport.summary.gross_discounted_gains)}</div>
-                </div>
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Non-Discounted Gains</div>
-                  <div className="text-xl font-bold text-white mt-1">{formatCurrency(cgtReport.summary.non_discounted_gains)}</div>
-                </div>
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Capital Losses</div>
-                  <div className="text-xl font-bold text-red-400 mt-1">{formatCurrency(cgtReport.summary.total_losses)}</div>
-                </div>
-                <div className="glass-card p-4 rounded-xl border border-slate-800 bg-emerald-500/10 border-emerald-500/20">
-                  <div className="text-xs font-semibold text-emerald-400 uppercase">Net Taxable CGT Position</div>
-                  <div className="text-2xl font-bold text-emerald-300 mt-1">{formatCurrency(cgtReport.summary.net_taxable_position)}</div>
-                </div>
-              </div>
+        cgtReport ? (
+          <VStack gap={6}>
+            <Grid columns={{ minWidth: 240, repeat: 'fit' }} gap={4}>
+              <SummaryCard
+                label="Discounted Gains (50%)"
+                value={formatCurrency(cgtReport.summary.net_discounted_gains)}
+                subtitle={`Gross: ${formatCurrency(cgtReport.summary.gross_discounted_gains)}`}
+              />
+              <SummaryCard label="Non-Discounted Gains" value={formatCurrency(cgtReport.summary.non_discounted_gains)} />
+              <SummaryCard label="Capital Losses" value={formatCurrency(cgtReport.summary.total_losses)} />
+              <SummaryCard label="Net Taxable CGT Position" value={formatCurrency(cgtReport.summary.net_taxable_position)} emphasis />
+            </Grid>
 
-              {/* Discounted Gains Table */}
-              <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden">
-                <div className="p-4 border-b border-slate-800 font-semibold text-white text-sm">
-                  Discounted Capital Gains (Held &gt; 12 months)
-                </div>
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-900/60 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
-                    <tr>
-                      <th className="py-3 px-4">Symbol</th>
-                      <th className="py-3 px-4">Acquire Date</th>
-                      <th className="py-3 px-4">Sell Date</th>
-                      <th className="py-3 px-4 text-right">Qty</th>
-                      <th className="py-3 px-4 text-right">Proceeds</th>
-                      <th className="py-3 px-4 text-right">Cost Base</th>
-                      <th className="py-3 px-4 text-right">Gross Gain</th>
-                      <th className="py-3 px-4 text-right">Net Taxable (50%)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {cgtReport.discounted_gains.map((g: any, i: number) => (
-                      <tr key={i} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-bold text-white">{g.symbol}</td>
-                        <td className="py-3 px-4">{formatDate(g.acquire_date)}</td>
-                        <td className="py-3 px-4">{formatDate(g.sell_date)}</td>
-                        <td className="py-3 px-4 text-right font-mono">{parseFloat(g.quantity).toFixed(2)}</td>
-                        <td className="py-3 px-4 text-right font-mono">{formatCurrency(g.proceeds)}</td>
-                        <td className="py-3 px-4 text-right font-mono">{formatCurrency(g.cost_base)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-emerald-400 font-semibold">{formatCurrency(g.gross_gain_loss)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-emerald-300 font-bold">{formatCurrency(g.net_taxable_gain)}</td>
-                      </tr>
-                    ))}
-                    {cgtReport.discounted_gains.length === 0 && (
-                      <tr><td colSpan={8} className="py-4 text-center text-slate-500 text-xs">No discounted capital gains in FY{fy}.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <Card padding={0}>
+              <VStack gap={0}>
+                <VStack padding={4} gap={0}>
+                  <Heading level={3}>Discounted Capital Gains (Held &gt; 12 months)</Heading>
+                </VStack>
+                <Table<DiscountedGain> data={cgtReport.discounted_gains} columns={discountedColumns} dividers="rows" hasHover />
+                {cgtReport.discounted_gains.length === 0 && (
+                  <VStack padding={4} hAlign="center"><Text type="supporting">No discounted capital gains in FY{fy}.</Text></VStack>
+                )}
+              </VStack>
+            </Card>
 
-              {/* Non-Discounted Gains Table */}
-              <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden">
-                <div className="p-4 border-b border-slate-800 font-semibold text-white text-sm">
-                  Other / Non-Discounted Capital Gains (Held &le; 12 months)
-                </div>
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-900/60 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
-                    <tr>
-                      <th className="py-3 px-4">Symbol</th>
-                      <th className="py-3 px-4">Acquire Date</th>
-                      <th className="py-3 px-4">Sell Date</th>
-                      <th className="py-3 px-4 text-right">Qty</th>
-                      <th className="py-3 px-4 text-right">Proceeds</th>
-                      <th className="py-3 px-4 text-right">Cost Base</th>
-                      <th className="py-3 px-4 text-right">Taxable Gain</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {cgtReport.non_discounted_gains.map((g: any, i: number) => (
-                      <tr key={i} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-bold text-white">{g.symbol}</td>
-                        <td className="py-3 px-4">{formatDate(g.acquire_date)}</td>
-                        <td className="py-3 px-4">{formatDate(g.sell_date)}</td>
-                        <td className="py-3 px-4 text-right font-mono">{parseFloat(g.quantity).toFixed(2)}</td>
-                        <td className="py-3 px-4 text-right font-mono">{formatCurrency(g.proceeds)}</td>
-                        <td className="py-3 px-4 text-right font-mono">{formatCurrency(g.cost_base)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-white font-bold">{formatCurrency(g.net_taxable_gain)}</td>
-                      </tr>
-                    ))}
-                    {cgtReport.non_discounted_gains.length === 0 && (
-                      <tr><td colSpan={7} className="py-4 text-center text-slate-500 text-xs">No non-discounted capital gains in FY{fy}.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <div className="p-8 text-center text-slate-400">Loading CGT report...</div>
-          )}
-        </div>
+            <Card padding={0}>
+              <VStack gap={0}>
+                <VStack padding={4} gap={0}>
+                  <Heading level={3}>Other / Non-Discounted Capital Gains (Held &le; 12 months)</Heading>
+                </VStack>
+                <Table<NonDiscountedGain> data={cgtReport.non_discounted_gains} columns={nonDiscountedColumns} dividers="rows" hasHover />
+                {cgtReport.non_discounted_gains.length === 0 && (
+                  <VStack padding={4} hAlign="center"><Text type="supporting">No non-discounted capital gains in FY{fy}.</Text></VStack>
+                )}
+              </VStack>
+            </Card>
+          </VStack>
+        ) : (
+          <VStack padding={8} hAlign="center"><Text type="supporting">Loading CGT report...</Text></VStack>
+        )
       )}
 
-      {/* TAB CONTENT: Income Report */}
       {activeTab === 'income' && (
-        <div className="space-y-6">
-          {incomeReport ? (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Total Gross Dividends</div>
-                  <div className="text-2xl font-bold text-emerald-400 mt-1">{formatCurrency(incomeReport.summary.total_gross_amount)}</div>
-                </div>
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Franking Credits</div>
-                  <div className="text-2xl font-bold text-white mt-1">{formatCurrency(incomeReport.summary.total_franking_credits)}</div>
-                </div>
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">AMIT Net Adjustment</div>
-                  <div className="text-2xl font-bold text-slate-200 mt-1">
-                    {formatCurrency(parseFloat(incomeReport.summary.total_amit_increase) - parseFloat(incomeReport.summary.total_amit_decrease))}
-                  </div>
-                </div>
-                <div className="glass-card p-4 rounded-xl border border-slate-800">
-                  <div className="text-xs font-semibold text-slate-400 uppercase">Net Payment Received</div>
-                  <div className="text-2xl font-bold text-emerald-300 mt-1">{formatCurrency(incomeReport.summary.total_net_payment)}</div>
-                </div>
-              </div>
+        incomeReport ? (
+          <VStack gap={6}>
+            <Grid columns={{ minWidth: 240, repeat: 'fit' }} gap={4}>
+              <SummaryCard label="Total Gross Dividends" value={formatCurrency(incomeReport.summary.total_gross_amount)} />
+              <SummaryCard label="Franking Credits" value={formatCurrency(incomeReport.summary.total_franking_credits)} />
+              <SummaryCard
+                label="AMIT Net Adjustment"
+                value={formatCurrency(parseFloat(incomeReport.summary.total_amit_increase) - parseFloat(incomeReport.summary.total_amit_decrease))}
+              />
+              <SummaryCard label="Net Payment Received" value={formatCurrency(incomeReport.summary.total_net_payment)} emphasis />
+            </Grid>
 
-              {/* Distributions Table */}
-              <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden">
-                <div className="p-4 border-b border-slate-800 font-semibold text-white text-sm">
-                  FY{fy} Dividend Distributions
-                </div>
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-900/60 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
-                    <tr>
-                      <th className="py-3 px-4">Symbol</th>
-                      <th className="py-3 px-4">Pay Date</th>
-                      <th className="py-3 px-4">Ex Date</th>
-                      <th className="py-3 px-4 text-right">Gross Amount</th>
-                      <th className="py-3 px-4 text-right">Franking Credits</th>
-                      <th className="py-3 px-4 text-right">AMIT Increase</th>
-                      <th className="py-3 px-4 text-right">AMIT Decrease</th>
-                      <th className="py-3 px-4 text-right">Net Payment</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {incomeReport.distributions.map((d: any, i: number) => (
-                      <tr key={i} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-bold text-white">{d.symbol}</td>
-                        <td className="py-3 px-4">{formatDate(d.pay_date)}</td>
-                        <td className="py-3 px-4">{formatDate(d.ex_date)}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">{formatCurrency(d.gross_amount)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-300">{formatCurrency(d.franking_credits)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-400">+{formatCurrency(d.amit_cost_base_increase)}</td>
-                        <td className="py-3 px-4 text-right font-mono text-slate-400">-{formatCurrency(d.amit_cost_base_decrease)}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-white">{formatCurrency(d.net_payment)}</td>
-                      </tr>
-                    ))}
-                    {incomeReport.distributions.length === 0 && (
-                      <tr><td colSpan={8} className="py-4 text-center text-slate-500 text-xs">No distributions in FY{fy}.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <div className="p-8 text-center text-slate-400">Loading Income report...</div>
-          )}
-        </div>
+            <Card padding={0}>
+              <VStack gap={0}>
+                <VStack padding={4} gap={0}>
+                  <Heading level={3}>FY{fy} Dividend Distributions</Heading>
+                </VStack>
+                <Table<Distribution> data={incomeReport.distributions} columns={distributionColumns} dividers="rows" hasHover />
+                {incomeReport.distributions.length === 0 && (
+                  <VStack padding={4} hAlign="center"><Text type="supporting">No distributions in FY{fy}.</Text></VStack>
+                )}
+              </VStack>
+            </Card>
+          </VStack>
+        ) : (
+          <VStack padding={8} hAlign="center"><Text type="supporting">Loading Income report...</Text></VStack>
+        )
       )}
-    </div>
+    </VStack>
   )
 }

@@ -1,8 +1,28 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useState, type CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
-import { PieChart, Lock, User, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Center } from '@astryxdesign/core/Center'
+import { VStack } from '@astryxdesign/core/Layout'
+import { Text, Heading } from '@astryxdesign/core/Text'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { Button } from '@astryxdesign/core/Button'
+import { Card } from '@astryxdesign/core/Card'
+import { Icon } from '@astryxdesign/core/Icon'
+import { NavIcon } from '@astryxdesign/core/NavIcon'
+import { Banner } from '@astryxdesign/core/Banner'
+import { Link } from '@astryxdesign/core/Link'
+import { PieChart } from 'lucide-react'
+
+const pageStyle: CSSProperties = {
+  minHeight: '100dvh',
+  backgroundColor: 'var(--color-background-body)',
+  padding: 'var(--spacing-6)',
+}
+const contentStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: 400,
+}
 
 export const Register: React.FC = () => {
   const navigate = useNavigate()
@@ -32,77 +52,60 @@ export const Register: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className="max-w-md w-full glass-card p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-2">
-            <PieChart className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Create your account</h1>
-          <p className="text-sm text-slate-400">Start tracking your ASX ETF portfolio locally</p>
-        </div>
+    <Center axis="both" style={pageStyle}>
+      <VStack gap={4} hAlign="center" style={contentStyle}>
+        <VStack gap={2} hAlign="center">
+          <NavIcon icon={<Icon icon={PieChart} size="md" />} />
+          <Text type="large" weight="bold">ETFolio</Text>
+        </VStack>
 
-        {error && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        <Card padding={8} width="100%">
+          <form onSubmit={handleSubmit}>
+            <VStack gap={4} hAlign="stretch">
+              <VStack gap={1} hAlign="center">
+                <Heading level={2}>Create your account</Heading>
+                <Text type="supporting">Start tracking your ASX ETF portfolio locally</Text>
+              </VStack>
 
-        {success && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>Account created! Redirecting to login...</span>
-          </div>
-        )}
+              {error && <Banner status="error" title={error} container="card" />}
+              {success && <Banner status="success" title="Account created! Redirecting to login..." container="card" />}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
-            <div className="relative">
-              <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-              <input
-                type="text"
-                required
+              <TextInput
+                label="Username"
                 value={username}
-                onChange={e => setUsername(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition text-sm"
+                onChange={setUsername}
                 placeholder="Choose a username"
+                size="lg"
+                isRequired
               />
-            </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-              <input
+              <TextInput
+                label="Password"
                 type="password"
-                required
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition text-sm"
+                onChange={setPassword}
                 placeholder="At least 8 characters"
+                size="lg"
+                isRequired
               />
-            </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={registerMutation.isPending || success}
-            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-900/30 transition disabled:opacity-50 text-sm"
-          >
-            {registerMutation.isPending ? 'Registering...' : 'Register'}
-          </button>
-        </form>
+              <Button
+                label={registerMutation.isPending ? 'Registering...' : 'Register'}
+                variant="primary"
+                size="lg"
+                type="submit"
+                isLoading={registerMutation.isPending}
+                isDisabled={success}
+                width="100%"
+              />
+            </VStack>
+          </form>
+        </Card>
 
-        <div className="text-center text-xs text-slate-400">
-          Already have an account?{' '}
-          <Link to="/login" className="text-emerald-400 hover:underline font-medium">
-            Sign In
-          </Link>
-        </div>
-      </div>
-    </div>
+        <Text type="supporting">
+          Already have an account? <Link href="/login">Sign In</Link>
+        </Text>
+      </VStack>
+    </Center>
   )
 }
