@@ -1,0 +1,18 @@
+services:
+  etfolio:
+    build: .
+    ports:
+      - "8080:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key_change_in_production_123456789}
+      - TZ=Australia/Sydney
+      - REGISTRATION_OPEN=true
+      - MAX_UPLOAD_MB=10
+      - COOKIE_SECURE=false
+    volumes:
+      - etfolio-db:/data/db
+      - etfolio-files:/data/files
+
+volumes:
+  etfolio-db:
+  etfolio-files:
