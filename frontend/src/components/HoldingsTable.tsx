@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { Card } from '@astryxdesign/core/Card'
 import { VStack, HStack } from '@astryxdesign/core/Layout'
+import { Center } from '@astryxdesign/core/Center'
 import { Heading, Text } from '@astryxdesign/core/Text'
-import { Table, proportional, useTableSortable } from '@astryxdesign/core/Table'
-import type { TableColumn, TableSortState } from '@astryxdesign/core/Table'
+import { Table, TableRow, TableCell, proportional, pixel, useTableSortable } from '@astryxdesign/core/Table'
+import type { TableColumn, TableSortState, TablePlugin } from '@astryxdesign/core/Table'
 import { Toolbar } from '@astryxdesign/core/Toolbar'
 import { Button } from '@astryxdesign/core/Button'
 import { Badge } from '@astryxdesign/core/Badge'
@@ -44,8 +45,75 @@ interface HoldingsTableProps {
 
 type SortKey = 'symbol' | 'last_price' | 'quantity' | 'market_value' | 'capital_gain' | 'income' | 'total_return'
 
+// Single source of truth for column sizing: the data table feeds these to
+// proportional(), and the totals row converts them to matching percentages so
+// the two line up. The chevron is fixed px — a fractional proportional column
+// would blow up the table's min-width, which is derived as
+// max(minWidth * totalProportion / proportion) across columns.
+const COLUMN_PROPORTIONS = {
+  symbol: 1.2,
+  last_price: 1,
+  quantity: 1,
+  market_value: 1,
+  capital_gain: 1,
+  income: 1,
+  total_return: 1
+}
+const TOTAL_PROPORTION = Object.values(COLUMN_PROPORTIONS).reduce((a, b) => a + b, 0)
+const CHEVRON_WIDTH = 44
+
+/** Astryx's default minimum for a proportional column. */
+const DEFAULT_MIN_COLUMN_WIDTH = 120
+
+/**
+ * Mirrors Astryx's own resolveColumnWidths so the totals row starts scrolling
+ * at exactly the same width as the data table and the two can't drift apart.
+ */
+const TABLE_MIN_WIDTH =
+  CHEVRON_WIDTH +
+  Math.max(...Object.values(COLUMN_PROPORTIONS).map(p => (DEFAULT_MIN_COLUMN_WIDTH * TOTAL_PROPORTION) / p))
+
+const columnPercent = (proportion: number) => `${(proportion / TOTAL_PROPORTION) * 100}%`
+
+/**
+ * The totals row is a separate <table>, so its cells must declare *exactly*
+ * what Astryx emits for the data table's <th>s — width AND min-width. The
+ * declared widths sum to 100% + CHEVRON_WIDTH, so the layout is
+ * over-constrained and the browser's distribution depends on min-width;
+ * omitting it shifts the whole row out of step with the columns above.
+ */
+const totalsCellStyle = (proportion: number, align?: 'end'): React.CSSProperties => ({
+  width: columnPercent(proportion),
+  minWidth: DEFAULT_MIN_COLUMN_WIDTH,
+  ...(align ? { textAlign: align } : {})
+})
+
 function ColoredValue({ value, isPositive }: { value: string; isPositive: boolean }) {
   return <Badge label={value} variant={isPositive ? 'green' : 'red'} />
+}
+
+/**
+ * useTableSortable replaces the header label with a block-level flex <button>,
+ * so the `text-align: end` that `align: 'end'` sets on the <th> can't position
+ * it — sortable numeric headers render hard-left above right-aligned values.
+ *
+ * Body cells right-align because their content is an inline <span> and
+ * text-align is inherited, so mirror that: wrap the header in an inline-level
+ * box and the existing text-align does the work. A block-level flex wrapper
+ * does NOT work here — the header cell carries `max-width: 0` (the truncation
+ * trick), leaving no free space for justify-content to distribute.
+ *
+ * Custom plugin names sort after all first-party ones, so this sees the
+ * finished sort button rather than being overwritten by it.
+ */
+const headerAlignPlugin: TablePlugin<HoldingItem> = {
+  transformHeaderCell(props, column) {
+    if (column.align !== 'end') return props
+    return {
+      ...props,
+      content: <Center isInline>{props.content}</Center>
+    }
+  }
 }
 
 export const HoldingsTable: React.FC<HoldingsTableProps> = ({
@@ -94,7 +162,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'symbol',
       header: 'Ticker / Name',
-      width: proportional(2),
+      width: proportional(COLUMN_PROPORTIONS.symbol),
       sortable: true,
       renderCell: h => (
         <Link href={`/portfolios/${portfolioId}/holdings/${h.id}`} isStandalone>
@@ -111,7 +179,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'last_price',
       header: 'Last Price',
-      width: proportional(1),
+      width: proportional(COLUMN_PROPORTIONS.last_price),
       align: 'end',
       sortable: true,
       renderCell: h => <Text hasTabularNumbers>{formatCurrency(h.last_price)}</Text>
@@ -119,7 +187,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'quantity',
       header: 'Units',
-      width: proportional(1),
+      width: proportional(COLUMN_PROPORTIONS.quantity),
       align: 'end',
       sortable: true,
       renderCell: h => <Text hasTabularNumbers>{parseFloat(h.quantity).toFixed(2)}</Text>
@@ -127,7 +195,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'market_value',
       header: 'Market Value',
-      width: proportional(1),
+      width: proportional(COLUMN_PROPORTIONS.market_value),
       align: 'end',
       sortable: true,
       renderCell: h => <Text weight="bold" hasTabularNumbers>{formatCurrency(h.market_value)}</Text>
@@ -135,7 +203,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'capital_gain',
       header: 'Capital Gain',
-      width: proportional(1),
+      width: proportional(COLUMN_PROPORTIONS.capital_gain),
       align: 'end',
       sortable: true,
       renderCell: h => {
@@ -146,7 +214,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'income',
       header: 'Income',
-      width: proportional(1),
+      width: proportional(COLUMN_PROPORTIONS.income),
       align: 'end',
       sortable: true,
       renderCell: h => <Text hasTabularNumbers>{formatCurrency(h.metrics?.income || '0')}</Text>
@@ -154,7 +222,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'total_return',
       header: 'Total Return',
-      width: proportional(1),
+      width: proportional(COLUMN_PROPORTIONS.total_return),
       align: 'end',
       sortable: true,
       renderCell: h => {
@@ -165,7 +233,10 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     {
       key: 'chevron',
       header: '',
-      width: proportional(0.3),
+      // Fixed px, not proportional: Table derives its min-width from
+      // max(minWidth * totalProportion / proportion), so a fractional
+      // proportional column blows the whole table's min-width up.
+      width: pixel(CHEVRON_WIDTH),
       align: 'end',
       renderCell: h => (
         <Link href={`/portfolios/${portfolioId}/holdings/${h.id}`} label={`View ${h.symbol}`}>
@@ -203,18 +274,34 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
           idKey="id"
           hasHover
           dividers="rows"
-          plugins={{ sortable: sortablePlugin }}
+          plugins={{ sortable: sortablePlugin, headerAlign: headerAlignPlugin }}
         />
 
-        <HStack padding={4} hAlign="between">
-          <Text weight="bold">Portfolio Totals</Text>
-          <HStack gap={6}>
-            <Text weight="bold" hasTabularNumbers>{formatCurrency(totalValue)}</Text>
-            <ColoredValue value={formatCurrency(totalCapGain)} isPositive={totalCapGain >= 0} />
-            <Text weight="bold" hasTabularNumbers>{formatCurrency(totalIncome)}</Text>
-            <ColoredValue value={formatCurrency(totalReturn)} isPositive={totalReturn >= 0} />
-          </HStack>
-        </HStack>
+        {/* Totals render as a real table row (children mode suppresses the
+            header) sharing COLUMN_PROPORTIONS, so the figures sit under the
+            columns they total rather than drifting out of alignment. */}
+        <Table dividers="none" style={{ minWidth: TABLE_MIN_WIDTH }}>
+          <TableRow>
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.symbol)}>
+              <Text weight="bold">Portfolio Totals</Text>
+            </TableCell>
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.last_price, 'end')} />
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.quantity, 'end')} />
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.market_value, 'end')}>
+              <Text weight="bold" hasTabularNumbers>{formatCurrency(totalValue)}</Text>
+            </TableCell>
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.capital_gain, 'end')}>
+              <ColoredValue value={formatCurrency(totalCapGain)} isPositive={totalCapGain >= 0} />
+            </TableCell>
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.income, 'end')}>
+              <Text weight="bold" hasTabularNumbers>{formatCurrency(totalIncome)}</Text>
+            </TableCell>
+            <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.total_return, 'end')}>
+              <ColoredValue value={formatCurrency(totalReturn)} isPositive={totalReturn >= 0} />
+            </TableCell>
+            <TableCell style={{ width: CHEVRON_WIDTH, minWidth: CHEVRON_WIDTH, textAlign: 'end' }} />
+          </TableRow>
+        </Table>
       </VStack>
     </Card>
   )

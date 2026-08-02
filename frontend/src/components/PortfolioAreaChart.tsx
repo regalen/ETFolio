@@ -12,7 +12,7 @@ import {
 import { VStack } from '@astryxdesign/core/Layout'
 import { Text } from '@astryxdesign/core/Text'
 import { Card } from '@astryxdesign/core/Card'
-import { formatCurrency, formatDate } from '../lib/format'
+import { formatCurrency, formatDate, formatMonthYear, formatDayMonth } from '../lib/format'
 
 interface SeriesItem {
   date: string
@@ -22,6 +22,24 @@ interface SeriesItem {
 
 interface PortfolioAreaChartProps {
   series: SeriesItem[]
+}
+
+/** Upper bound on x-axis labels before month ticks get thinned out. */
+const MAX_AXIS_TICKS = 8
+
+/** First date of each month in the series, thinned to at most MAX_AXIS_TICKS. */
+function buildMonthTicks(dates: string[]): string[] {
+  const monthStarts: string[] = []
+  let lastMonth = ''
+  for (const date of dates) {
+    const month = date.slice(0, 7)
+    if (month !== lastMonth) {
+      monthStarts.push(date)
+      lastMonth = month
+    }
+  }
+  const step = Math.max(1, Math.ceil(monthStarts.length / MAX_AXIS_TICKS))
+  return monthStarts.filter((_, i) => i % step === 0)
 }
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string }) {
@@ -47,6 +65,15 @@ export const PortfolioAreaChart: React.FC<PortfolioAreaChartProps> = ({ series }
     cost_base: parseFloat(s.cost_base)
   }))
 
+  // The series is one point per day. Over a long range that means letting
+  // Recharts pick ticks would repeat the same "Mar 2025" label several times,
+  // so pin the ticks to month boundaries instead. Short ranges (7D, a month or
+  // two) never span enough months for that label to be useful, so they keep
+  // day-level labels.
+  const useMonthTicks = chartData.length > 90
+
+  const monthTicks = useMonthTicks ? buildMonthTicks(chartData.map(p => p.date)) : undefined
+
   if (!series || series.length === 0) {
     return (
       <VStack height={288} vAlign="center" hAlign="center">
@@ -68,7 +95,8 @@ export const PortfolioAreaChart: React.FC<PortfolioAreaChartProps> = ({ series }
           <CartesianGrid horizontal vertical={false} stroke="var(--color-border)" />
           <XAxis
             dataKey="date"
-            tickFormatter={val => formatDate(val)}
+            tickFormatter={val => (useMonthTicks ? formatMonthYear(val) : formatDayMonth(val))}
+            {...(monthTicks ? { ticks: monthTicks } : { minTickGap: 32 })}
             stroke="var(--color-text-secondary)"
             tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
             axisLine={false}

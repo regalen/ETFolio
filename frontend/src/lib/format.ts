@@ -23,6 +23,29 @@ export function formatPercent(val: number | string | null | undefined): string {
   return `${sign}${num.toFixed(2)}%`
 }
 
+function parseDateOnly(dateStr: string): Date | null {
+  const parts = dateStr.split('T')[0].split('-')
+  if (parts.length !== 3) return null
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+  return isNaN(d.getTime()) ? null : d
+}
+
+/** Compact axis label for long ranges, e.g. "Mar 2025". */
+export function formatMonthYear(dateStr: string | null | undefined): string {
+  if (!dateStr) return '-'
+  const d = parseDateOnly(dateStr)
+  if (!d) return dateStr
+  return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+}
+
+/** Compact axis label for short ranges, e.g. "1 Mar". */
+export function formatDayMonth(dateStr: string | null | undefined): string {
+  if (!dateStr) return '-'
+  const d = parseDateOnly(dateStr)
+  if (!d) return dateStr
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+}
+
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '-'
   try {

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { AppShell } from '@astryxdesign/core/AppShell'
 import { LinkProvider } from '@astryxdesign/core/Link'
+import { HStack, VStack } from '@astryxdesign/core/Layout'
 import { Navbar } from './components/Navbar'
 import { ThemeModeProvider } from './theme/ThemeModeProvider'
 import { RouterLinkAdapter } from './lib/routerLink'
@@ -24,10 +25,19 @@ const queryClient = new QueryClient({
   },
 })
 
+// Cap page content so it stays readable on wide displays instead of
+// stretching edge to edge. Pages that want a narrower measure (forms,
+// settings) still set their own smaller max-width inside this.
+const CONTENT_MAX_WIDTH = 1440
+
 const AppLayout: React.FC = () => {
   return (
     <AppShell topNav={<Navbar />} contentPadding={6}>
-      <Outlet />
+      <HStack justify="center">
+        <VStack width="100%" maxWidth={CONTENT_MAX_WIDTH}>
+          <Outlet />
+        </VStack>
+      </HStack>
     </AppShell>
   )
 }
