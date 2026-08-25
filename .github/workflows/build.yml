@@ -35,7 +35,7 @@ jobs:
           npm --version
 
       - name: Install backend dependencies
-        run: pip3 install --no-cache-dir './backend[dev]'
+        run: python3 -m pip install --no-cache-dir './backend[dev]'
 
       - name: Install frontend dependencies
         working-directory: frontend
