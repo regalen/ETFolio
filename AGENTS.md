@@ -62,6 +62,47 @@ frontend/
 - Page content width is inconsistent: some pages (TradeEntry, Settings) cap their own max-width inline; others (Dashboard, Reports, HoldingDetail, Importer) run full-bleed under `AppShell`, capping only individual form-like cards (see `Importer.tsx`'s upload `Card`) rather than the whole page. Needs a deliberate decision for the remaining pages, not more inline caps.
 - Any `Table` column using a fractional `proportional()` width (e.g. `proportional(0.5)`) blows up the table's derived min-width (`max(minWidth * totalProportion / proportion)` across columns) and forces horizontal overflow — use `pixel()` for narrow fixed-width columns (row numbers, chevrons) instead, per `HoldingsTable.tsx` and `Importer.tsx`.
 
+## Git workflow & CI/CD
+
+`main` is the only long-lived branch and is always deployable. Never commit or push directly to `main` — all changes reach it through squash-merged pull requests.
+
+### Branch naming
+
+Use short-lived branches named `<type>/<short-slug>` (kebab-case): `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`, `perf/`.
+
+```bash
+git checkout main && git pull
+git checkout -b feat/my-feature
+```
+
+Push the branch, open a PR targeting `main`, wait for CI validation, squash merge, delete the branch.
+
+### PR titles
+
+PR titles must be clean Conventional Commit-style lines (e.g., `feat: add DRP auto-linking`) — the squash-merge title becomes the commit on `main` and feeds release notes.
+
+### CI pipeline
+
+Defined in `.github/workflows/build.yml`. All jobs run on a self-hosted Linux x64 runner.
+
+- **validate** (PR only): installs deps, runs `tsc --noEmit`, `npm run build`, and `pytest backend/tests/`.
+- **build-and-push** (push to `main` or `v*` tag): builds `linux/amd64` Docker image, pushes to GHCR.
+- **release** (`v*` tag only): creates a GitHub Release with generated notes.
+
+Feature-branch pushes without an open PR run no CI. If `main` moves after validation, rebase and get a fresh green run before merging.
+
+### Releases
+
+```bash
+git checkout main && git pull
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+### Docker safety
+
+Always `docker compose build` before `docker compose up -d` to avoid validating a stale image. Never run `docker compose down -v`, `docker volume prune`, or `docker system prune` without explicit confirmation.
+
 ## Commands
 
 ```bash
