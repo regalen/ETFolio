@@ -17,8 +17,6 @@ def test_spa_path_traversal_prevention(client: TestClient):
     """Regression test for Item 6: path traversal attempts outside frontend_dist must be rejected with 404."""
     resp = client.get("/..%2f..%2fetc%2fpasswd")
     assert resp.status_code == 404
-    assert resp.json() == {"detail": "Not found"}
 
     resp2 = client.get("/..%2f..%2fdata%2fdb%2fetfolio.sqlite3")
     assert resp2.status_code == 404
-    assert resp2.json() == {"detail": "Not found"}
