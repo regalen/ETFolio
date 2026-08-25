@@ -65,7 +65,7 @@ A version tag triggers the CI pipeline to publish a versioned Docker image to GH
 
 ## CI / GitHub Actions
 
-The workflow lives at `.github/workflows/build.yml`. All jobs run on a self-hosted Linux x64 runner (`runs-on: [self-hosted, linux, x64]`). Jobs will queue if no matching runner is online.
+The workflow lives at `.github/workflows/build.yml`. All jobs run on GitHub-hosted `ubuntu-latest` runners.
 
 ### Jobs
 
@@ -83,18 +83,6 @@ The workflow lives at `.github/workflows/build.yml`. All jobs run on a self-host
 | Tag `vX.Y.Z` | `latest`, `X.Y.Z` |
 
 Feature-branch images are never published.
-
-## Runner prerequisites
-
-The self-hosted runner needs:
-
-- **OS:** Linux x64
-- **Python:** 3.12+ (or `actions/setup-python` cache)
-- **Node.js:** 20 LTS (or `actions/setup-node` cache)
-- **Docker-compatible CLI:** Docker or Podman with `docker` compatibility alias
-- **Network:** Access to GHCR (`ghcr.io`) for image push
-
-If the runner uses rootless Podman without Buildx, images are built with plain `docker build --platform linux/amd64` (no `docker/build-push-action`). The workflow already handles this.
 
 ## Local Docker validation
 

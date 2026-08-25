@@ -87,7 +87,7 @@ PR titles must be clean Conventional Commit-style lines (e.g., `feat: add DRP au
 
 ### CI pipeline
 
-Defined in `.github/workflows/build.yml`. All jobs run on a self-hosted Linux x64 runner.
+Defined in `.github/workflows/build.yml`. All jobs run on GitHub-hosted `ubuntu-latest` runners.
 
 - **validate** (PR only): installs deps, runs `tsc --noEmit`, `npm run build`, and `pytest backend/tests/`.
 - **build-and-push** (push to `main` or `v*` tag): builds `linux/amd64` Docker image, pushes to GHCR.
