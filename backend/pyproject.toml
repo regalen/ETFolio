@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "etfolio-backend"
 version = "0.1.0"
 description = "ETFolio backend service"
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110.0",
@@ -20,6 +19,9 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pydantic-settings>=2.2.1",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [project.optional-dependencies]
 dev = [

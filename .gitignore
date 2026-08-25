@@ -12,3 +12,4 @@ frontend/dist/
 frontend/node_modules/
 backend/data/
 .env
+.playwright-mcp/
