@@ -66,6 +66,10 @@ frontend/
 
 `main` is the only long-lived branch and is always deployable. Never commit or push directly to `main` — all changes reach it through squash-merged pull requests.
 
+### Authorship
+
+The sole contributor is **regalen**. Never add `Co-Authored-By`, `Generated-by`, or any other trailer or language in commits, PRs, or release notes that attributes or references an LLM, AI assistant, or coding agent.
+
 ### Branch naming
 
 Use short-lived branches named `<type>/<short-slug>` (kebab-case): `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`, `perf/`.
