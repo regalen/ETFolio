@@ -79,6 +79,35 @@ docker compose up -d --build
 
 If using Podman instead of Docker, the default socket is permission-denied — set `DOCKER_HOST=unix:///run/user/1000/podman/podman.sock` before `docker compose` commands.
 
+## UI Verification & Testing Protocol (Playwright MCP)
+
+Any task involving UI/UX modifications, frontend component updates, or layout changes **must** be visually and functionally verified using the Playwright MCP server before the task is considered complete. Type-checking and test suites verify code correctness, not feature correctness — Playwright MCP closes that gap.
+
+### Required SOP steps
+
+1. **Ensure the local development server is running.**
+   Start the Vite dev server (`npm run dev` inside `frontend/`) and, if the change touches API-connected views, the FastAPI backend (`uvicorn` or `docker compose up`). Confirm the app is reachable (default: `http://localhost:5173`) before proceeding.
+
+2. **Navigate and interact with the modified views using Playwright MCP tools.**
+   - `browser_navigate` — open the page(s) affected by the change.
+   - `browser_snapshot` — capture the accessibility tree to verify DOM structure and element presence.
+   - `browser_click`, `browser_fill_form`, `browser_select_option`, `browser_press_key` — exercise interactive elements (buttons, forms, dropdowns, modals) to confirm expected state transitions.
+   - `browser_take_screenshot` — capture visual output for layout, alignment, and theme verification.
+
+3. **Verify the following before marking the task complete:**
+   - **Responsiveness:** Use `browser_resize` to test at common breakpoints (mobile 375px, tablet 768px, desktop 1280px+). Confirm no horizontal overflow or broken layouts.
+   - **UI state changes:** Confirm loading states, empty states, error states, and success feedback render correctly.
+   - **Visual alignment:** Check spacing, typography, and component alignment against the Astryx design system expectations.
+   - **Zero browser console errors:** Run `browser_console_messages` (level: `error`) after each navigation and interaction. Any unexpected errors or warnings must be investigated and resolved before completion.
+   - **Light/dark mode:** If the change touches themed components, verify both modes via the app's theme toggle.
+
+4. **Save reference screenshots when visual regression testing is required.**
+   Store screenshots with descriptive filenames (e.g., `dashboard-light-desktop.png`, `holding-detail-dark-mobile.png`) in the scratchpad directory. Note any visual deviations in the task summary.
+
+### When to skip
+
+This protocol may be skipped **only** when the change is purely backend (no frontend files touched), purely configuration, or limited to test files. Document the skip reason in the task summary if asked.
+
 ## Environment
 
 See `.env.example` / README.md for the full variable list (`SECRET_KEY`, `TZ`, `REGISTRATION_OPEN`, `MAX_UPLOAD_MB`, `COOKIE_SECURE`, `DATABASE_PATH`, `ATTACHMENTS_DIR`).
