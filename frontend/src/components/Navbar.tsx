@@ -95,53 +95,55 @@ export const Navbar: React.FC = () => {
       }
       endContent={
         <>
-          {portfolios.length > 0 && currentPortfolio && (
-            <DropdownMenu
-              button={{
-                label: currentPortfolio.name,
-                variant: 'secondary',
-                size: 'sm',
-                endContent: currentPortfolio.permission !== 'owner'
-                  ? <Badge label={currentPortfolio.permission} variant="warning" />
-                  : undefined
-              }}
-              hasChevron
-              items={portfolios.map(p => ({
-                label: p.name,
-                onClick: () => navigate(`/portfolios/${p.id}`)
-              }))}
-            />
-          )}
+          <HStack gap={4} vAlign="center">
+            {portfolios.length > 0 && currentPortfolio && (
+              <DropdownMenu
+                button={{
+                  label: currentPortfolio.name,
+                  variant: 'secondary',
+                  size: 'sm',
+                  endContent: currentPortfolio.permission !== 'owner'
+                    ? <Badge label={currentPortfolio.permission} variant="warning" />
+                    : undefined
+                }}
+                hasChevron
+                items={portfolios.map(p => ({
+                  label: p.name,
+                  onClick: () => navigate(`/portfolios/${p.id}`)
+                }))}
+              />
+            )}
 
-          {currentPortfolio && currentPortfolio.permission !== 'view' && (
-            <Button
-              label="Add Investment"
-              variant="primary"
-              size="sm"
-              icon={<Icon icon={Plus} size="sm" />}
-              onClick={() => navigate(`/portfolios/${currentPortfolio.id}/trades/new`)}
-            />
-          )}
+            {currentPortfolio && currentPortfolio.permission !== 'view' && (
+              <Button
+                label="Add Investment"
+                variant="primary"
+                size="sm"
+                icon={<Icon icon={Plus} size="sm" />}
+                onClick={() => navigate(`/portfolios/${currentPortfolio.id}/trades/new`)}
+              />
+            )}
+          </HStack>
 
           <IconButton
             label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             tooltip={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            icon={<Icon icon={mode === 'dark' ? Sun : Moon} size="sm" />}
+            icon={<Icon icon={mode === 'dark' ? Sun : Moon} size="md" />}
             variant="ghost"
-            size="sm"
+            size="md"
             onClick={toggleMode}
           />
 
           {user && (
-            <HStack gap={2} vAlign="center">
-              <Avatar name={user.username} size="sm" />
-              <Text type="supporting">{user.username}</Text>
+            <HStack gap={3} vAlign="center">
+              <Avatar name={user.username} size="md" />
+              <Text type="body">{user.username}</Text>
               <IconButton
                 label="Logout"
                 tooltip="Logout"
-                icon={<Icon icon={LogOut} size="sm" />}
+                icon={<Icon icon={LogOut} size="md" />}
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={() => logoutMutation.mutate()}
               />
             </HStack>

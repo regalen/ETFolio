@@ -14,8 +14,10 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { Badge } from '@astryxdesign/core/Badge'
 import { Token } from '@astryxdesign/core/Token'
 import { Divider } from '@astryxdesign/core/Divider'
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog'
+import { AlertDialog } from '@astryxdesign/core/AlertDialog'
 import { useToast } from '@astryxdesign/core/Toast'
-import { ArrowLeft, Users, Tag } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Tag } from 'lucide-react'
 
 export const SettingsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -28,7 +30,9 @@ export const SettingsPage: React.FC = () => {
   const [shareUsername, setShareUsername] = useState('')
   const [sharePermission, setSharePermission] = useState<'view' | 'edit'>('view')
   const [newTagName, setNewTagName] = useState('')
-  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [newPortfolioName, setNewPortfolioName] = useState('')
+  const [isCreatePortfolioOpen, setIsCreatePortfolioOpen] = useState(false)
+  const [isDeletePortfolioOpen, setIsDeletePortfolioOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   const { data: portfolio } = useQuery<any>({
@@ -43,6 +47,16 @@ export const SettingsPage: React.FC = () => {
   const { data: shares = [] } = useQuery<any[]>({
     queryKey: ['shares', portfolioId],
     queryFn: () => apiFetch(`/api/portfolios/${portfolioId}/shares`)
+  })
+
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ['other-users'],
+    queryFn: () => apiFetch('/api/auth/users')
+  })
+
+  const { data: portfolios = [] } = useQuery<any[]>({
+    queryKey: ['portfolios'],
+    queryFn: () => apiFetch('/api/portfolios')
   })
 
   const { data: tags = [] } = useQuery<any[]>({
@@ -109,6 +123,20 @@ export const SettingsPage: React.FC = () => {
     }
   })
 
+  const createPortfolioMutation = useMutation({
+    mutationFn: () => apiFetch<any>('/api/portfolios', {
+      method: 'POST',
+      body: JSON.stringify({ name: newPortfolioName.trim() })
+    }),
+    onSuccess: (createdPortfolio) => {
+      queryClient.invalidateQueries({ queryKey: ['portfolios'] })
+      setNewPortfolioName('')
+      setIsCreatePortfolioOpen(false)
+      navigate(`/portfolios/${createdPortfolio.id}/settings`)
+    },
+    onError: (err: Error) => setErrorMsg(err.message)
+  })
+
   if (!portfolio) {
     return (
       <VStack padding={8} hAlign="center">
@@ -118,20 +146,40 @@ export const SettingsPage: React.FC = () => {
   }
 
   const isOwner = portfolio.permission === 'owner'
+  const shareUserOptions = users.map(user => ({ value: user.username, label: user.username }))
 
   return (
     <VStack gap={6} style={{ maxWidth: 768, margin: '0 auto' }}>
-      <HStack gap={3} vAlign="center">
-        <IconButton
-          label="Back to dashboard"
-          icon={<Icon icon={ArrowLeft} size="sm" />}
-          variant="secondary"
-          onClick={() => navigate(`/portfolios/${portfolioId}`)}
-        />
-        <VStack gap={0}>
-          <Heading level={1}>Portfolio Settings</Heading>
-          <Text type="supporting">Manage portfolio configuration, sharing, and tags</Text>
-        </VStack>
+      <HStack hAlign="between" vAlign="center" wrap="wrap" gap={4}>
+        <HStack gap={3} vAlign="center">
+          <IconButton
+            label="Back to dashboard"
+            icon={<Icon icon={ArrowLeft} size="sm" />}
+            variant="secondary"
+            onClick={() => navigate(`/portfolios/${portfolioId}`)}
+          />
+          <VStack gap={0}>
+            <Heading level={1}>Portfolio Settings</Heading>
+            <Text type="supporting">Manage portfolio configuration, sharing, and tags</Text>
+          </VStack>
+        </HStack>
+        <HStack gap={3} vAlign="center" wrap="wrap">
+          <Selector
+            label="Portfolio to manage"
+            isLabelHidden
+            value={String(portfolioId)}
+            onChange={value => navigate(`/portfolios/${value}/settings`)}
+            options={portfolios.map(item => ({ value: String(item.id), label: item.name }))}
+            width={220}
+            size="md"
+          />
+          <Button
+            label="New Portfolio"
+            icon={<Icon icon={Plus} size="sm" />}
+            variant="primary"
+            onClick={() => setIsCreatePortfolioOpen(true)}
+          />
+        </HStack>
       </HStack>
 
       {errorMsg && <Banner status="error" title={errorMsg} container="card" />}
@@ -164,12 +212,16 @@ export const SettingsPage: React.FC = () => {
 
           {isOwner && (
             <HStack gap={3} wrap="wrap">
-              <TextInput
-                label="Username to share with"
+              <Selector
+                label="User to share with"
                 isLabelHidden
-                placeholder="Username to share with"
                 value={shareUsername}
                 onChange={setShareUsername}
+                options={shareUserOptions}
+                placeholder="Select a user"
+                hasSearch
+                width={260}
+                size="md"
               />
               <Selector
                 label="Permission"
@@ -180,6 +232,8 @@ export const SettingsPage: React.FC = () => {
                   { value: 'view', label: 'View Only' },
                   { value: 'edit', label: 'Can Edit' }
                 ]}
+                width={160}
+                size="md"
               />
               <Button
                 label="Add Access"
@@ -202,7 +256,7 @@ export const SettingsPage: React.FC = () => {
                     <Button
                       label="Revoke"
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       onClick={() => revokeShareMutation.mutate(s.id)}
                     />
                   )}
@@ -256,31 +310,58 @@ export const SettingsPage: React.FC = () => {
       </Card>
 
       {isOwner && (
-        <Card variant="red">
-          <VStack gap={3}>
-            <Text type="label" color="secondary">Delete Portfolio</Text>
+        <Card>
+          <VStack gap={4}>
+            <HStack>
+              <Badge label="Danger Zone" variant="error" />
+            </HStack>
+            <Heading level={3}>Delete portfolio</Heading>
             <Text type="supporting">
-              Permanently delete this portfolio and all associated holdings, trades, distributions, and attachments.
-              Type <Text as="span" weight="bold">{portfolio.name}</Text> to confirm deletion:
+              Deleting {portfolio.name} permanently removes its holdings, trades, distributions, and attachments.
             </Text>
-            <HStack gap={3}>
-              <TextInput
-                label="Confirm portfolio name"
-                isLabelHidden
-                value={deleteConfirm}
-                onChange={setDeleteConfirm}
-                placeholder={`Type ${portfolio.name} to confirm`}
-              />
+            <HStack>
               <Button
-                label="Delete Portfolio"
+                label="Delete portfolio"
                 variant="destructive"
-                isDisabled={deleteConfirm !== portfolio.name}
-                onClick={() => deletePortfolioMutation.mutate()}
+                onClick={() => setIsDeletePortfolioOpen(true)}
               />
             </HStack>
           </VStack>
         </Card>
       )}
+
+      <Dialog isOpen={isCreatePortfolioOpen} onOpenChange={setIsCreatePortfolioOpen} purpose="form" width={480}>
+        <DialogHeader title="Create portfolio" onOpenChange={setIsCreatePortfolioOpen} />
+        <VStack gap={4} padding={4}>
+          <TextInput
+            label="Portfolio name"
+            value={newPortfolioName}
+            onChange={setNewPortfolioName}
+            placeholder="e.g. Long-term investments"
+            hasAutoFocus
+          />
+          <HStack hAlign="end" gap={3}>
+            <Button label="Cancel" variant="secondary" onClick={() => setIsCreatePortfolioOpen(false)} />
+            <Button
+              label="Create portfolio"
+              variant="primary"
+              isDisabled={!newPortfolioName.trim()}
+              isLoading={createPortfolioMutation.isPending}
+              onClick={() => createPortfolioMutation.mutate()}
+            />
+          </HStack>
+        </VStack>
+      </Dialog>
+
+      <AlertDialog
+        isOpen={isDeletePortfolioOpen}
+        onOpenChange={setIsDeletePortfolioOpen}
+        title="Delete this portfolio?"
+        description={`This permanently deletes ${portfolio.name}, including its holdings, trades, distributions, and attachments.`}
+        actionLabel="Delete portfolio"
+        onAction={() => deletePortfolioMutation.mutate()}
+        isActionLoading={deletePortfolioMutation.isPending}
+      />
     </VStack>
   )
 }

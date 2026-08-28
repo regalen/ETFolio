@@ -291,7 +291,7 @@ export const HoldingDetail: React.FC = () => {
           tooltip="Delete trade"
           icon={<Icon icon={Trash2} size="sm" />}
           variant="ghost"
-          size="sm"
+          size="md"
           onClick={() => deleteTradeMutation.mutate({ tid: t.id, cascade: false })}
         />
       )
@@ -325,7 +325,7 @@ export const HoldingDetail: React.FC = () => {
           tooltip="Delete distribution"
           icon={<Icon icon={Trash2} size="sm" />}
           variant="ghost"
-          size="sm"
+          size="md"
           onClick={() => deleteDistMutation.mutate({ did: d.id, cascade: false })}
         />
       )
@@ -444,7 +444,7 @@ export const HoldingDetail: React.FC = () => {
                   onClick={() => navigate(`/portfolios/${portfolioId}/trades/new`)}
                 />
               </HStack>
-              <Table<TradeRow> data={trades} columns={tradeColumns} idKey="id" dividers="rows" hasHover />
+              <Table<TradeRow> data={trades} columns={tradeColumns} idKey="id" dividers="rows" hasHover density="spacious" />
             </VStack>
           </Card>
 
@@ -460,7 +460,7 @@ export const HoldingDetail: React.FC = () => {
                   onClick={() => setShowDistModal(true)}
                 />
               </HStack>
-              <Table<DistRow> data={distributions} columns={distColumns} idKey="id" dividers="rows" hasHover />
+              <Table<DistRow> data={distributions} columns={distColumns} idKey="id" dividers="rows" hasHover density="spacious" />
             </VStack>
           </Card>
         </VStack>
@@ -618,9 +618,9 @@ export const HoldingDetail: React.FC = () => {
           </Grid>
 
           <Grid columns={3} gap={3}>
-            <TextInput label="Franking ($)" value={frankingCredits} onChange={setFrankingCredits} size="sm" />
-            <TextInput label="AMIT Inc ($)" value={amitInc} onChange={setAmitInc} size="sm" />
-            <TextInput label="AMIT Dec ($)" value={amitDec} onChange={setAmitDec} size="sm" />
+            <TextInput label="Franking ($)" value={frankingCredits} onChange={setFrankingCredits} />
+            <TextInput label="AMIT Inc ($)" value={amitInc} onChange={setAmitInc} />
+            <TextInput label="AMIT Dec ($)" value={amitDec} onChange={setAmitDec} />
           </Grid>
 
           <Card variant="muted">
@@ -633,8 +633,8 @@ export const HoldingDetail: React.FC = () => {
 
               {isReinvested && (
                 <Grid columns={2} gap={3}>
-                  <TextInput label="Reinvested Units" value={reinvestUnits} onChange={setReinvestUnits} placeholder="e.g. 5" isRequired size="sm" />
-                  <TextInput label="Reinvestment Price" value={reinvestPrice} onChange={setReinvestPrice} placeholder="e.g. 40.50" isRequired size="sm" />
+                  <TextInput label="Reinvested Units" value={reinvestUnits} onChange={setReinvestUnits} placeholder="e.g. 5" isRequired />
+                  <TextInput label="Reinvestment Price" value={reinvestPrice} onChange={setReinvestPrice} placeholder="e.g. 40.50" isRequired />
                 </Grid>
               )}
             </VStack>

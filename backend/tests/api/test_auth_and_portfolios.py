@@ -22,6 +22,11 @@ def test_auth_and_portfolio_sharing(client: TestClient):
     assert me_a.status_code == 200
     assert me_a.json()["username"] == "usera"
 
+    # The sharing selector receives other accounts, never the current user.
+    users_a = client_a.get("/api/auth/users")
+    assert users_a.status_code == 200
+    assert [user["username"] for user in users_a.json()] == ["userb"]
+
     # 3. User A creates a portfolio
     create_p = client_a.post("/api/portfolios", json={"name": "A's Portfolio"})
     assert create_p.status_code == 201
@@ -95,4 +100,3 @@ def test_logout_revokes_session_token(client: TestClient):
     # Replay old token via Authorization: Bearer header -> MUST receive 401
     me_resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me_resp.status_code == 401
-

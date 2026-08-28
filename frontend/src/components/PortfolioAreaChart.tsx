@@ -45,7 +45,7 @@ function buildMonthTicks(dates: string[]): string[] {
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string }) {
   if (!active || !payload?.length) return null
   return (
-    <Card padding={3}>
+    <Card padding={4}>
       <VStack gap={1}>
         <Text type="supporting">{formatDate(label || '')}</Text>
         {payload.map(p => (

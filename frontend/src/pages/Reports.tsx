@@ -165,7 +165,7 @@ export const Reports: React.FC = () => {
                 <VStack padding={4} gap={0}>
                   <Heading level={3}>Discounted Capital Gains (Held &gt; 12 months)</Heading>
                 </VStack>
-                <Table<DiscountedGain> data={cgtReport.discounted_gains} columns={discountedColumns} dividers="rows" hasHover />
+                <Table<DiscountedGain> data={cgtReport.discounted_gains} columns={discountedColumns} dividers="rows" hasHover density="spacious" />
                 {cgtReport.discounted_gains.length === 0 && (
                   <VStack padding={4} hAlign="center"><Text type="supporting">No discounted capital gains in FY{fy}.</Text></VStack>
                 )}
@@ -177,7 +177,7 @@ export const Reports: React.FC = () => {
                 <VStack padding={4} gap={0}>
                   <Heading level={3}>Other / Non-Discounted Capital Gains (Held &le; 12 months)</Heading>
                 </VStack>
-                <Table<NonDiscountedGain> data={cgtReport.non_discounted_gains} columns={nonDiscountedColumns} dividers="rows" hasHover />
+                <Table<NonDiscountedGain> data={cgtReport.non_discounted_gains} columns={nonDiscountedColumns} dividers="rows" hasHover density="spacious" />
                 {cgtReport.non_discounted_gains.length === 0 && (
                   <VStack padding={4} hAlign="center"><Text type="supporting">No non-discounted capital gains in FY{fy}.</Text></VStack>
                 )}
@@ -207,7 +207,7 @@ export const Reports: React.FC = () => {
                 <VStack padding={4} gap={0}>
                   <Heading level={3}>FY{fy} Dividend Distributions</Heading>
                 </VStack>
-                <Table<Distribution> data={incomeReport.distributions} columns={distributionColumns} dividers="rows" hasHover />
+                <Table<Distribution> data={incomeReport.distributions} columns={distributionColumns} dividers="rows" hasHover density="spacious" />
                 {incomeReport.distributions.length === 0 && (
                   <VStack padding={4} hAlign="center"><Text type="supporting">No distributions in FY{fy}.</Text></VStack>
                 )}

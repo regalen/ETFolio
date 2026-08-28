@@ -148,71 +148,75 @@ export const Importer: React.FC = () => {
 
   return (
     <VStack gap={6}>
-      <HStack gap={3} vAlign="center">
-        <IconButton
-          label="Back to dashboard"
-          icon={<Icon icon={ArrowLeft} size="sm" />}
-          variant="secondary"
-          onClick={() => navigate(`/portfolios/${portfolioId}`)}
-        />
-        <VStack gap={0}>
-          <Heading level={1}>Import Trades CSV</Heading>
-          <Text type="supporting">Upload a CSV of your trade history to populate trades</Text>
+      <HStack hAlign="center">
+        <VStack gap={6} width="100%" maxWidth={768}>
+        <HStack gap={3} vAlign="center">
+          <IconButton
+            label="Back to dashboard"
+            icon={<Icon icon={ArrowLeft} size="sm" />}
+            variant="secondary"
+            onClick={() => navigate(`/portfolios/${portfolioId}`)}
+          />
+          <VStack gap={0}>
+            <Heading level={1}>Import Trades CSV</Heading>
+            <Text type="supporting">Upload a CSV of your trade history to populate trades</Text>
+          </VStack>
+        </HStack>
+
+        {errorMsg && <Banner status="error" title={errorMsg} container="card" />}
+
+        {committedBatch && (
+          <Card variant="green">
+            <HStack hAlign="between" vAlign="center" wrap="wrap" gap={4}>
+              <VStack gap={0}>
+                <Heading level={3}>Import Committed Successfully</Heading>
+                <Text type="supporting">
+                  Imported {committedBatch.row_count} trades from {committedBatch.filename}
+                </Text>
+              </VStack>
+              <Button
+                label={undoMutation.isPending ? 'Undoing...' : 'Undo Import'}
+                variant="destructive"
+                size="md"
+                icon={<Icon icon={Undo2} size="sm" />}
+                isLoading={undoMutation.isPending}
+                onClick={() => undoMutation.mutate(committedBatch.batch_id)}
+              />
+            </HStack>
+          </Card>
+        )}
+
+        {!committedBatch && (
+          <Card padding={8} width="100%">
+            <VStack gap={4} hAlign="center">
+              <VStack gap={1} hAlign="center">
+                <Heading level={3}>Select CSV File</Heading>
+                <Text type="supporting">
+                  Columns needed: Symbol, Date, Type, Quantity, Price (Brokerage, Broker, and Notes optional)
+                </Text>
+                <Link as={PlainAnchor} href="/api/import/template" download>
+                  <HStack gap={1.5} vAlign="center">
+                    <Icon icon={Download} size="sm" />
+                    <Text weight="semibold">Download CSV template</Text>
+                  </HStack>
+                </Link>
+              </VStack>
+
+              <FileInput
+                label="Trade CSV file"
+                isLabelHidden
+                mode="dropzone"
+                accept=".csv"
+                value={selectedFile}
+                onChange={handleFileChange}
+                isLoading={previewMutation.isPending}
+                width="100%"
+              />
+            </VStack>
+          </Card>
+        )}
         </VStack>
       </HStack>
-
-      {errorMsg && <Banner status="error" title={errorMsg} container="card" />}
-
-      {committedBatch && (
-        <Card variant="green">
-          <HStack hAlign="between" vAlign="center" wrap="wrap" gap={4}>
-            <VStack gap={0}>
-              <Heading level={3}>Import Committed Successfully</Heading>
-              <Text type="supporting">
-                Imported {committedBatch.row_count} trades from {committedBatch.filename}
-              </Text>
-            </VStack>
-            <Button
-              label={undoMutation.isPending ? 'Undoing...' : 'Undo Import'}
-              variant="destructive"
-              size="sm"
-              icon={<Icon icon={Undo2} size="sm" />}
-              isLoading={undoMutation.isPending}
-              onClick={() => undoMutation.mutate(committedBatch.batch_id)}
-            />
-          </HStack>
-        </Card>
-      )}
-
-      {!committedBatch && (
-        <Card padding={8} style={{ maxWidth: 640, margin: '0 auto' }}>
-          <VStack gap={4} hAlign="center">
-            <VStack gap={1} hAlign="center">
-              <Heading level={3}>Select CSV File</Heading>
-              <Text type="supporting">
-                Columns needed: Symbol, Date, Type, Quantity, Price (Brokerage, Broker, and Notes optional)
-              </Text>
-              <Link as={PlainAnchor} href="/api/import/template" download>
-                <HStack gap={1.5} vAlign="center">
-                  <Icon icon={Download} size="sm" />
-                  <Text weight="semibold">Download CSV template</Text>
-                </HStack>
-              </Link>
-            </VStack>
-
-            <FileInput
-              label="Trade CSV file"
-              isLabelHidden
-              mode="dropzone"
-              accept=".csv"
-              value={selectedFile}
-              onChange={handleFileChange}
-              isLoading={previewMutation.isPending}
-              width="100%"
-            />
-          </VStack>
-        </Card>
-      )}
 
       {previewData && !committedBatch && (
         <VStack gap={4}>
@@ -231,7 +235,7 @@ export const Importer: React.FC = () => {
             <Card padding={0}>
               <VStack gap={0}>
                 <Toolbar label="Summary by symbol" startContent={<Heading level={3}>Summary by Symbol</Heading>} />
-                <Table<SymbolSummary> data={symbolSummary} columns={summaryColumns} idKey="symbol" dividers="rows" />
+                <Table<SymbolSummary> data={symbolSummary} columns={summaryColumns} idKey="symbol" dividers="rows" density="spacious" />
               </VStack>
             </Card>
           )}
@@ -247,7 +251,7 @@ export const Importer: React.FC = () => {
           )}
 
           <Card padding={0}>
-            <Table<PreviewRow> data={previewData.valid_rows} columns={previewColumns} idKey="row" dividers="rows" hasHover />
+            <Table<PreviewRow> data={previewData.valid_rows} columns={previewColumns} idKey="row" dividers="rows" hasHover density="spacious" />
           </Card>
         </VStack>
       )}
