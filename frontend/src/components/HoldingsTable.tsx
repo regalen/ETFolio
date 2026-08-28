@@ -262,7 +262,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
               label={groupByTag ? 'Ungroup' : 'Group by Tag'}
               icon={<Icon icon={Tag} size="sm" />}
               variant={groupByTag ? 'primary' : 'secondary'}
-              size="sm"
+              size="md"
               onClick={() => setGroupByTag(!groupByTag)}
             />
           }
@@ -274,13 +274,14 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
           idKey="id"
           hasHover
           dividers="rows"
+          density="spacious"
           plugins={{ sortable: sortablePlugin, headerAlign: headerAlignPlugin }}
         />
 
         {/* Totals render as a real table row (children mode suppresses the
             header) sharing COLUMN_PROPORTIONS, so the figures sit under the
             columns they total rather than drifting out of alignment. */}
-        <Table dividers="none" style={{ minWidth: TABLE_MIN_WIDTH }}>
+        <Table dividers="none" density="spacious" style={{ minWidth: TABLE_MIN_WIDTH }}>
           <TableRow>
             <TableCell style={totalsCellStyle(COLUMN_PROPORTIONS.symbol)}>
               <Text weight="bold">Portfolio Totals</Text>

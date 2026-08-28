@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Theme } from '@astryxdesign/core/theme'
 import { LayerProvider } from '@astryxdesign/core/Layer'
-import { neutralTheme } from '@astryxdesign/theme-neutral/built'
+import { comfortableTheme } from './comfortableTheme'
 
 export type ThemeMode = 'light' | 'dark'
 
@@ -40,7 +40,7 @@ export const ThemeModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <ThemeModeContext.Provider value={value}>
-      <Theme theme={neutralTheme} mode={mode}>
+      <Theme theme={comfortableTheme} mode={mode}>
         <LayerProvider>
           {children}
         </LayerProvider>

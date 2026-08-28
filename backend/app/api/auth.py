@@ -66,3 +66,14 @@ def logout(request: Request, response: Response, current_user: User = Depends(ge
 @router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/users", response_model=list[UserResponse])
+def list_other_users(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return accounts that can be selected when sharing a portfolio."""
+    return (
+        db.query(User)
+        .filter(User.id != current_user.id)
+        .order_by(User.username.asc())
+        .all()
+    )

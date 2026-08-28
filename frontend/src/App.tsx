@@ -32,7 +32,7 @@ const CONTENT_MAX_WIDTH = 1440
 
 const AppLayout: React.FC = () => {
   return (
-    <AppShell topNav={<Navbar />} contentPadding={6}>
+    <AppShell topNav={<Navbar />} contentPadding={8}>
       <HStack justify="center">
         <VStack width="100%" maxWidth={CONTENT_MAX_WIDTH}>
           <Outlet />

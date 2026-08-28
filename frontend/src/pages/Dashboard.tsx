@@ -58,7 +58,7 @@ export const Dashboard: React.FC = () => {
           <Text type="supporting">Track value, capital gains, and dividend income</Text>
         </VStack>
 
-        <HStack gap={3} vAlign="center">
+        <HStack gap={3} vAlign="center" wrap="wrap" width="100%">
           <DateRangePicker preset={preset} onPresetChange={setPreset} />
           <TextInput
             label="Search ticker"
@@ -67,14 +67,14 @@ export const Dashboard: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search ticker..."
             startIcon={Search}
-            size="sm"
-            width={176}
+            size="md"
+            width={208}
           />
         </HStack>
       </HStack>
 
       {/* KPI metric cards */}
-      <Grid columns={{ minWidth: 240, repeat: 'fit' }} gap={4}>
+      <Grid columns={{ minWidth: 240, repeat: 'fit' }} gap={6}>
         <MetricCard
           title="Portfolio Value"
           dollarValue={metrics.market_value_t1 || '0.00'}

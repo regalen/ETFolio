@@ -27,8 +27,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   const isPositive = numPercent !== undefined ? numPercent >= 0 : numDollar >= 0
 
   return (
-    <Card>
-      <VStack gap={3}>
+    <Card padding={6}>
+      <VStack gap={4}>
         <HStack hAlign="between" vAlign="center">
           <Text type="label" color="secondary">{title}</Text>
           {icon && <Icon icon={icon} size="sm" color="accent" />}
