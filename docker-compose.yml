@@ -1,6 +1,6 @@
 services:
   etfolio:
-    build: .
+    image: ghcr.io/regalen/etfolio:${ETFOLIO_VERSION:-latest}
     platform: linux/amd64
     ports:
       - "8080:8000"
