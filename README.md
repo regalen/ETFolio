@@ -29,8 +29,9 @@
    cp .env.example .env
    ```
 
-3. **Launch with Docker Compose:**
+3. **Pull and launch with Docker Compose:**
    ```bash
+   docker compose pull
    docker compose up -d
    ```
 
